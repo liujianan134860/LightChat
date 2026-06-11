@@ -154,6 +154,23 @@ class GroupDao(private val dbHelper: DatabaseHelper) {
         return result
     }
 
+    fun getConversationReadSeq(conversationId: String, userId: String): Long {
+        if (conversationId.isBlank() || userId.isBlank()) return 0L
+        val db = dbHelper.readableDatabase
+        val cursor = db.query(
+            "conversation_member",
+            arrayOf("last_read_seq"),
+            "owner_user_id = ? AND conversation_id = ? AND user_id = ?",
+            arrayOf(dbHelper.currentOwnerId(), conversationId, userId),
+            null,
+            null,
+            null
+        )
+        return cursor.use {
+            if (it.moveToFirst()) it.getLong(0) else 0L
+        }
+    }
+
     companion object {
         fun ImGroup.toContentValues(ownerUserId: String) = ContentValues().apply {
             put("owner_user_id", ownerUserId)

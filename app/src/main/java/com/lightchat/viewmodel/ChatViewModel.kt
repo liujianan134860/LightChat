@@ -941,11 +941,23 @@ class ChatViewModel : ViewModel() {
             .filter { it.senderId != currentUserId }
             .maxOfOrNull { it.conversationSeq } ?: return
         if (maxConvSeq <= 0L) return
-        val lastSeq = lastReportedReadSeq[state.conversationId] ?: 0L
+        val localReadSeq = app.groupDao.getConversationReadSeq(state.conversationId, currentUserId)
+        val lastSeq = maxOf(lastReportedReadSeq[state.conversationId] ?: 0L, localReadSeq)
         if (maxConvSeq <= lastSeq) return
+        val hasUnreadIncoming = state.messages.any {
+            it.senderId != currentUserId &&
+                it.conversationSeq > lastSeq &&
+                it.status != MessageStatus.READ
+        }
+        if (!hasUnreadIncoming) {
+            lastReportedReadSeq[state.conversationId] = maxConvSeq
+            app.groupDao.upsertConversationMemberRead(state.conversationId, currentUserId, maxConvSeq)
+            return
+        }
         val sent = app.imClient.markRead(state.conversationId, maxConvSeq)
         if (!sent) return
         lastReportedReadSeq[state.conversationId] = maxConvSeq
+        app.groupDao.upsertConversationMemberRead(state.conversationId, currentUserId, maxConvSeq)
         state.messages
             .filter { it.senderId != currentUserId && it.conversationSeq <= maxConvSeq }
             .map { it.senderId }
