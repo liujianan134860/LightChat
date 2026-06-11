@@ -77,6 +77,17 @@ class AuthRepository(
         val app = LightChatApplication.instance
         val userId = userSession.currentUserId ?: return
         val root = authApiClient.bootstrap(token)
+        val conversationSettings = mutableMapOf<String, BootstrapConversationSettings>()
+        root.optJSONObject("conversationSettings")?.let { settingsObj ->
+            settingsObj.keys().forEach { convId ->
+                val s = settingsObj.optJSONObject(convId) ?: JSONObject()
+                conversationSettings[convId] = BootstrapConversationSettings(
+                    isPinned = s.optBoolean("isPinned", false),
+                    pinnedTime = s.optLong("pinnedTime", 0),
+                    mute = s.optBoolean("mute", false)
+                )
+            }
+        }
 
         root.optJSONArray("users")?.let { users ->
             for (i in 0 until users.length()) {
@@ -158,11 +169,13 @@ class AuthRepository(
                 }
                 val convUser = userDao.getById(targetId)
                 val convGroup = if (type == "GROUP") app.groupDao.getGroupById(groupId) else null
+                val resolvedConversationId = conversationId.ifBlank {
+                    if (type == "GROUP") ConversationId.group(groupId) else ConversationId.single(userId, targetId)
+                }
+                val settings = conversationSettings[resolvedConversationId]
                 app.conversationDao.insert(
                     Conversation(
-                        conversationId = conversationId.ifBlank {
-                            if (type == "GROUP") ConversationId.group(groupId) else ConversationId.single(userId, targetId)
-                        },
+                        conversationId = resolvedConversationId,
                         type = if (type == "GROUP") ConversationType.GROUP else ConversationType.SINGLE,
                         targetId = targetId,
                         title = title,
@@ -171,24 +184,19 @@ class AuthRepository(
                         avatarVersion = if (type == "GROUP") convGroup?.avatarVersion ?: 0 else convUser?.avatarVersion ?: 0,
                         lastMessageId = lastMessage?.messageId,
                         lastMessageContent = lastMessage?.let { displayMessageContent(it) }.orEmpty(),
-                        lastMessageTime = lastMessage?.createTime ?: obj.optLong("createdAt", System.currentTimeMillis())
+                        lastMessageTime = lastMessage?.createTime ?: obj.optLong("createdAt", System.currentTimeMillis()),
+                        isPinned = settings?.isPinned ?: false,
+                        pinnedTime = settings?.pinnedTime ?: 0,
+                        mute = settings?.mute ?: false
                     )
                 )
             }
         }
 
         // Apply per-user conversation settings (pin/mute) from server bootstrap
-        root.optJSONObject("conversationSettings")?.let { settingsObj ->
-            settingsObj.keys().forEach { convId ->
-                val s = settingsObj.optJSONObject(convId) ?: JSONObject()
-                val isPinned = s.optBoolean("isPinned", false)
-                val pinnedTime = s.optLong("pinnedTime", 0)
-                val mute = s.optBoolean("mute", false)
-                if (isPinned || mute) {
-                    app.conversationDao.setPinned(convId, isPinned, pinnedTime)
-                    app.conversationDao.setMute(convId, mute)
-                }
-            }
+        conversationSettings.forEach { (convId, settings) ->
+            app.conversationDao.setPinned(convId, settings.isPinned, settings.pinnedTime)
+            app.conversationDao.setMute(convId, settings.mute)
         }
 
         val maxUserSeq = root.optLong("maxUserSeq", 0L)
@@ -231,4 +239,10 @@ class AuthRepository(
         MessageType.MERGE_FORWARD -> "[聊天记录]"
         else -> message.content
     }
+
+    private data class BootstrapConversationSettings(
+        val isPinned: Boolean,
+        val pinnedTime: Long,
+        val mute: Boolean
+    )
 }

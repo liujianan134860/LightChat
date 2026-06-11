@@ -10,7 +10,24 @@ class ConversationDao(private val dbHelper: DatabaseHelper) {
 
     fun insert(conversation: Conversation): Long {
         val db = dbHelper.writableDatabase
-        return db.insertWithOnConflict("conversation", null, conversation.toContentValues(dbHelper.currentOwnerId()), SQLiteDatabase.CONFLICT_REPLACE)
+        val owner = dbHelper.currentOwnerId()
+        val existing = getById(conversation.conversationId)
+        val value = if (
+            existing != null &&
+            !conversation.isPinned &&
+            conversation.pinnedTime == 0L &&
+            !conversation.mute &&
+            (existing.isPinned || existing.pinnedTime > 0L || existing.mute)
+        ) {
+            conversation.copy(
+                isPinned = existing.isPinned,
+                pinnedTime = existing.pinnedTime,
+                mute = existing.mute
+            )
+        } else {
+            conversation
+        }
+        return db.insertWithOnConflict("conversation", null, value.toContentValues(owner), SQLiteDatabase.CONFLICT_REPLACE)
     }
 
     fun insertAll(conversations: List<Conversation>) {
