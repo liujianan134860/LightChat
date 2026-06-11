@@ -1,0 +1,26 @@
+package com.lightchat.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val WeChatGreen = Color(0xFF1BC49D)
+val WeChatGreenDark = Color(0xFF17A080)
+val WeChatBg = Color(0xFFEDEDED)
+val WeChatWhite = Color(0xFFFFFFFF)
+val TextPrimary = Color(0xFF111111)
+val TextSecondary = Color(0xFF999999)
+val DividerColor = Color(0xFFE0E0E0)
+val TopBarBackground = Color(0xFFEDEDED)
+val BottomBarBackground = Color(0xFFF7F7F7)
+val SectionBackground = Color(0xFFF5F5F5)
+val InputStrokeLight = Color(0xFFE5E5E5)
+val PanelDividerLight = Color(0xFFDADADA)
+val PlaceholderGray = Color(0xFFD9D9D9)
+val ChatIconDark = Color(0xFF212121)
+val ChatAlbumIcon = Color(0xFF1A1A1A)
+val UnreadRed = Color(0xFFF4333C)
+val BubbleGreen = Color(0xFF95EC69)
+val BubbleWhite = Color(0xFFFFFFFF)
+val BubbleGray = Color(0xFFE0E0E0)
+val BubbleRed = Color(0xFFFFE0E0)
+val GroupAccentBlue = Color(0xFF4A90D9)
+val HighlightBackground = Color(0x66FFD54F)

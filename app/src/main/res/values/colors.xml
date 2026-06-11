@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="wechat_green">#FF1BC49D</color>
+    <color name="wechat_bg">#FFEDEDED</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="text_primary">#FF111111</color>
+    <color name="text_secondary">#FF999999</color>
+    <color name="divider">#FFE0E0E0</color>
+    <color name="top_bar_background">#FFEDEDED</color>
+    <color name="bottom_bar_background">#FFF7F7F7</color>
+</resources>

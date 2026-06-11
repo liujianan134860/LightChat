@@ -1,0 +1,62 @@
+# Gradle / build outputs
+.gradle/
+build/
+**/build/
+out/
+
+# IDE / local machine
+.idea/
+*.iml
+local.properties
+
+# Local startup scripts and machine-specific automation
+start-all.ps1
+start-server.ps1
+stop-all.ps1
+scripts/
+
+# Local databases and MySQL data
+mysql-data/
+tmp_perf/
+*.db
+*.sqlite
+*.sqlite3
+server-data.json
+
+# Logs and runtime dumps
+*.log
+*.err.log
+*.out.log
+ERROR_LOG.md
+hs_err_pid*
+replay_pid*
+
+# Screenshots, recordings, generated UI dumps, and analysis artifacts
+screen-*.png
+screen-*.jpg
+chat-*.png
+chat-*.jpg
+oss-ui-*.png
+oss-ui-*.xml
+profile-*.xml
+window-*.xml
+window_dump*.xml
+video-*/
+video-frames/
+*.mp4
+
+# Local test media artifacts
+oss-regression-test.jpg
+oss-test-send.jpg
+
+# Local project history / interview notes / generated reports
+问题修复与测试记录.md
+录制脚本.md
+性能优化说明.md
+性能优化说明.docx
+数据库表设计说明.md
+项目说明文档.md
+
+# OS noise
+.DS_Store
+Thumbs.db
