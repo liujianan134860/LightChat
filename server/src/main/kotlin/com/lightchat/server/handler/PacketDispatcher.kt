@@ -127,7 +127,7 @@ class PacketDispatcher(
                     return
                 }
                 conn.send(codec.encodeMessageAck(messageId, 0, packet.seq, existing.conversationSeq))
-                println("[MSG-DEDUPE] $senderId -> $conversationId: $messageId")
+                println("[MSG-DEDUPE] sender=$senderId conversation=$conversationId messageId=$messageId conversationSeq=${existing.conversationSeq} packetSeq=${packet.seq}")
                 return
             }
             val conversationSeq = eventService.nextConversationSeq(conversationId)
@@ -157,7 +157,7 @@ class PacketDispatcher(
             } catch (e: Exception) {
                 println("[MSG] ACK sent but delivery failed for $messageId: ${e.message}")
             }
-            println("[MSG] $senderId -> $conversationId: $content")
+            println("[MSG] sender=$senderId conversation=$conversationId messageId=$messageId type=$messageType clientSeq=$clientSeq conversationSeq=$conversationSeq content=${content.toLogPreview()}")
         } catch (e: Exception) {
             sendError(conn, 400, "Invalid message format: ${e.message}", packet.seq)
         }
@@ -178,6 +178,8 @@ class PacketDispatcher(
 
             val allEvents = eventService.getEventsSince(userId, lastUserSeq)
             val deduped = dedupReadEvents(allEvents)
+            val inboxSize = eventService.getInboxSize(userId)
+            val latestUserSeq = eventService.getLatestUserSeq(userId)
 
             val maxPerSync = 100
             val hasMore = deduped.size > maxPerSync
@@ -186,7 +188,11 @@ class PacketDispatcher(
 
             val eventsJson = eventService.buildSyncResultJson(page, hasMore, nextUserSeq)
             conn.send(codec.encodeSyncResult(eventsJson, packet.seq))
-            println("[SYNC] $userId: lastUserSeq=$lastUserSeq, total=${deduped.size}, returned=${page.size}, hasMore=$hasMore")
+            println(
+                "[SYNC] user=$userId requestLastSeq=$lastUserSeq latestSeq=$latestUserSeq " +
+                    "inboxSize=$inboxSize rawPending=${allEvents.size} dedupedPending=${deduped.size} " +
+                    "returned=${page.size} hasMore=$hasMore nextSeq=$nextUserSeq packetSeq=${packet.seq}"
+            )
         } catch (e: Exception) {
             sendError(conn, 500, "Sync failed: ${e.message}", packet.seq)
         }
@@ -589,5 +595,15 @@ class PacketDispatcher(
         val min = if (userA < userB) userA else userB
         val max = if (userA < userB) userB else userA
         return "single_${min}_$max"
+    }
+
+    private fun String.toLogPreview(maxLength: Int = 80): String {
+        if (isBlank()) return "\"\""
+        val normalized = replace('\n', ' ').replace('\r', ' ')
+        return if (normalized.length <= maxLength) {
+            "\"$normalized\""
+        } else {
+            "\"${normalized.take(maxLength)}...(len=${normalized.length})\""
+        }
     }
 }

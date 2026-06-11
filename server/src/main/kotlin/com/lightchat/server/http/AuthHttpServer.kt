@@ -136,7 +136,17 @@ class AuthHttpServer(
             return
         }
         val json = dataStore.buildBootstrapJson(userId)
-        json.put("maxUserSeq", eventService.getLatestUserSeq(userId))
+        val maxUserSeq = eventService.getLatestUserSeq(userId)
+        json.put("maxUserSeq", maxUserSeq)
+        println(
+            "[BOOTSTRAP] user=$userId users=${json.optJSONArray("users")?.length() ?: 0} " +
+                "friends=${json.optJSONArray("friends")?.length() ?: 0} " +
+                "groups=${json.optJSONArray("groups")?.length() ?: 0} " +
+                "conversations=${json.optJSONArray("conversations")?.length() ?: 0} " +
+                "messages=${json.optJSONArray("messages")?.length() ?: 0} " +
+                "settings=${json.optJSONObject("conversationSettings")?.length() ?: 0} " +
+                "maxUserSeq=$maxUserSeq"
+        )
         writeJson(exchange, 200, json)
     }
 
