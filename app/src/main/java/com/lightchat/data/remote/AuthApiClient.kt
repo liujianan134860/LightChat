@@ -69,10 +69,18 @@ class AuthApiClient(
         }
     }
 
-    fun refreshImageUrl(expiredUrl: String, objectKey: String, token: String): String? {
+    fun refreshImageUrl(
+        expiredUrl: String,
+        objectKey: String,
+        token: String,
+        messageId: String = "",
+        urlField: String = ""
+    ): String? {
         val body = JSONObject().apply {
             if (expiredUrl.isNotBlank()) put("url", expiredUrl)
             if (objectKey.isNotBlank()) put("objectKey", objectKey)
+            if (messageId.isNotBlank()) put("messageId", messageId)
+            if (urlField.isNotBlank()) put("urlField", urlField)
         }
         val request = Request.Builder()
             .url("$baseUrl/api/images/refresh-url")

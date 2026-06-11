@@ -228,6 +228,10 @@ class AuthHttpServer(
             val body = readJson(exchange)
             val url = body.optString("url", "").takeIf { it.isNotBlank() }
             val objectKey = body.optString("objectKey", "").takeIf { it.isNotBlank() }
+            val messageId = body.optString("messageId", "").takeIf { it.isNotBlank() }
+            val urlField = body.optString("urlField", "").takeIf {
+                it == "imageUrl" || it == "thumbnailUrl"
+            }
 
             val newUrl: String = when {
                 url != null -> {
@@ -242,12 +246,27 @@ class AuthHttpServer(
                 }
             }
 
+            if (messageId != null && urlField != null) {
+                updateMessageImageUrl(messageId, urlField, newUrl)
+            }
+
             writeJson(exchange, 200, JSONObject().apply {
                 put("url", newUrl)
             })
         } catch (e: Exception) {
             writeError(exchange, 500, "刷新图片URL失败: ${e.message}")
         }
+    }
+
+    private fun updateMessageImageUrl(messageId: String, urlField: String, newUrl: String) {
+        val message = dataStore.getMessage(messageId) ?: return
+        val extra = try {
+            JSONObject(message.extra ?: "{}")
+        } catch (_: Exception) {
+            JSONObject()
+        }
+        extra.put(urlField, newUrl)
+        dataStore.updateMessageExtra(messageId, extra.toString())
     }
 
     private fun handleMockPushPending(exchange: HttpExchange) {

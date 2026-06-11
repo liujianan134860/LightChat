@@ -140,7 +140,9 @@ fun rememberProgressiveImagePath(
             val result = PictureCacheManager.downloadToFile(
                 target = thumbImage,
                 imageUrl = thumbnailUrl,
-                objectKey = thumbnailObjectKey
+                objectKey = thumbnailObjectKey,
+                messageId = message.messageId,
+                urlField = "thumbnailUrl"
             ) { refreshedUrl ->
                 persistRefreshedUrl(message.messageId, message.extra, "thumbnailUrl", refreshedUrl)
             }
@@ -157,7 +159,9 @@ fun rememberProgressiveImagePath(
         val result = PictureCacheManager.downloadToFile(
             target = fullImage,
             imageUrl = imageUrl,
-            objectKey = imageObjectKey
+            objectKey = imageObjectKey,
+            messageId = message.messageId,
+            urlField = "imageUrl"
         ) { refreshedUrl ->
             persistRefreshedUrl(message.messageId, message.extra, "imageUrl", refreshedUrl)
         }
@@ -202,7 +206,13 @@ suspend fun resolveOriginalImageForSave(context: Context, message: Message): Fil
         val imageUrl = parseImageUrls(message).second
         val objectKey = parseImageObjectKeys(message).second
         if (imageUrl.isBlank()) return@withContext null
-        val result = PictureCacheManager.downloadToFile(fullImage, imageUrl, objectKey) { refreshedUrl ->
+        val result = PictureCacheManager.downloadToFile(
+            target = fullImage,
+            imageUrl = imageUrl,
+            objectKey = objectKey,
+            messageId = message.messageId,
+            urlField = "imageUrl"
+        ) { refreshedUrl ->
             persistRefreshedUrl(message.messageId, message.extra, "imageUrl", refreshedUrl)
         }
         if (result.success && fullImage.exists()) {

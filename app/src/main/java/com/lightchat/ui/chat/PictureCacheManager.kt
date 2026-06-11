@@ -84,10 +84,12 @@ object PictureCacheManager {
         target: File,
         imageUrl: String,
         objectKey: String,
+        messageId: String = "",
+        urlField: String = "",
         onUrlRefreshed: ((String) -> Unit)? = null
     ): DownloadResult = withContext(Dispatchers.IO) {
         if (tryDownload(target, imageUrl)) return@withContext DownloadResult(true, null)
-        val freshUrl = refreshImageUrl(imageUrl, objectKey)
+        val freshUrl = refreshImageUrl(imageUrl, objectKey, messageId, urlField)
         if (freshUrl != null && freshUrl != imageUrl) {
             onUrlRefreshed?.invoke(freshUrl)
             if (tryDownload(target, freshUrl)) return@withContext DownloadResult(true, freshUrl)
@@ -116,11 +118,11 @@ object PictureCacheManager {
         return freshUrl != null && freshUrl != imageUrl && tryDownload(target, freshUrl)
     }
 
-    private fun refreshImageUrl(url: String, objectKey: String): String? {
+    private fun refreshImageUrl(url: String, objectKey: String, messageId: String = "", urlField: String = ""): String? {
         return try {
             val app = LightChatApplication.instance
             val token = app.tokenManager.getToken() ?: return null
-            AuthApiClient().refreshImageUrl(url, objectKey, token)
+            AuthApiClient().refreshImageUrl(url, objectKey, token, messageId, urlField)
         } catch (_: Exception) { null }
     }
 

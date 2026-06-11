@@ -148,6 +148,13 @@ class DataStore {
 
     fun getMessage(messageId: String): ServerMessage? = messages[messageId]
 
+    fun updateMessageExtra(messageId: String, extra: String): Boolean {
+        val existing = messages[messageId] ?: return false
+        messages[messageId] = existing.copy(extra = extra)
+        onChanged?.invoke()
+        return true
+    }
+
     fun getOrCreateConversation(convId: String, type: String): ServerConversation {
         return conversations.computeIfAbsent(convId) {
             ServerConversation(conversationId = convId, type = type)
