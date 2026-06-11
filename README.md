@@ -1,380 +1,356 @@
-# LightChat — 自研 IM 客户端
+# LightChat
 
-参考微信聊天产品形态和 seqsvr 同步思想设计的自研即时通讯客户端。
+LightChat 是一个用于学习和实践 IM 核心链路的 Android 即时通讯项目。项目包含 Android 客户端和 Kotlin/JVM 服务端，围绕单聊、群聊、好友关系、消息同步、图片消息、已读回执、撤回、转发、离线通知等功能做了完整实现。
+
+> 当前仓库以源码、构建配置、测试文档和 CI 配置为主；本机启动脚本、数据库目录、测试截图、录屏、AccessKey 等调试产物不会上传到 GitHub。
+
+## 项目结构
+
+```text
+LightChat/
+├── app/                    # Android 客户端
+├── server/                 # Kotlin/JVM 服务端
+├── .github/workflows/      # GitHub Actions CI
+├── gradle/                 # Gradle wrapper 配置
+├── build.gradle.kts
+├── settings.gradle.kts
+├── TESTING.md              # 测试范围与运行方式
+└── README.md
+```
 
 ## 技术栈
 
-| 层面 | 技术选型 |
-|------|----------|
-| 语言 | Kotlin |
-| UI | Jetpack Compose + Material 3 |
-| 架构 | MVVM (ViewModel + StateFlow) |
-| 数据库 | SQLite (SQLiteOpenHelper) |
-| 网络 | OkHttp WebSocket |
-| 协议 | 自定义二进制协议 (Header + Body + CRC) |
-| 导航 | Navigation Compose |
+| 模块 | 技术 |
+| --- | --- |
+| Android | Kotlin, Jetpack Compose, Material 3, Navigation Compose |
+| 客户端存储 | SQLiteOpenHelper, DAO, Repository |
+| 客户端网络 | OkHttp HTTP + WebSocket |
+| 服务端 | Kotlin/JVM, Netty WebSocket, JDK HttpServer |
+| 服务端存储 | MySQL 快照持久化 |
+| 媒体存储 | 阿里云 OSS |
+| 协议 | 自定义二进制协议 + JSON body + CRC32 |
+| 测试 | JUnit4, Gradle, GitHub Actions |
 
-## 服务端启动
+## 核心能力
 
-一键启动本地 MySQL 和 LightChat 服务端：
+- 登录/注册，JWT 鉴权，服务端会话校验。
+- 单聊与群聊文本消息。
+- 好友申请、同意、拒绝，好友关系同步。
+- 群聊创建、群成员列表、邀请成员、群系统提示。
+- WebSocket 长连接、心跳、断线重连、前后台/网络变化恢复。
+- 自定义二进制协议，支持命令号、序列号、长度、CRC 校验。
+- `userSeq` 增量同步，客户端按事件顺序落库。
+- `clientSeq`、`conversationSeq`、`userSeq` 三套序列号控制本地发送、会话顺序和用户同步进度。
+- 消息 ACK、发送失败、重发、消息撤回。
+- 已读回执，包含在线即时通知和同步兜底。
+- 会话置顶、免打扰、未读数、@我摘要。
+- 群聊 @ 成员、@所有人、@消息定位与高亮。
+- 聊天记录搜索，定位到目标消息并高亮。
+- 图片消息，缩略图优先显示，点击后拉取原图。
+- 图片全屏浏览、下载、转发。
+- 名片消息、合并转发消息、合并转发详情页。
+- Mock 厂商推送：用于本地模拟离线通知和进程被杀后的通知展示。
+- 本地头像/图片缓存，远端拉取后优先复用本地缓存。
 
-```powershell
-.\start-all.ps1
+## 架构概览
+
+```text
+Android UI (Compose)
+        ↓
+ViewModel + StateFlow
+        ↓
+Repository
+        ↓
+DAO + SQLite
+        ↓
+EventProcessor / SyncManager / ImClient
+        ↓
+OkHttp WebSocket + HTTP
+        ↓
+Netty WebSocket Server + HTTP API
+        ↓
+DataStore + EventService + MySQL snapshot
 ```
 
-如果 8080/8081 已经有旧服务端占用：
-
-```powershell
-.\start-all.ps1 -RestartServer
-```
-
-停止服务端：
-
-```powershell
-.\stop-all.ps1
-```
-
-只停止服务端，保留项目本地 MySQL：
-
-```powershell
-.\stop-all.ps1 -KeepMysql
-```
-
-默认使用 JSON 文件持久化：
-
-```powershell
-.\start-server.ps1 -Storage json
-```
-
-使用本机 MySQL 持久化前，先检查并初始化数据库：
-
-```powershell
-.\scripts\start-local-mysql.ps1
-.\scripts\check-mysql.ps1 -Init -User root -Password "你的密码"
-.\start-server.ps1 -MysqlUser root -MysqlPassword "你的密码"
-```
-
-MySQL 模式默认连接 `127.0.0.1:3307/lightchat`。初始化 SQL 位于 `scripts/init-mysql.sql`，当前服务端会把完整状态快照写入 `lightchat_state` 表。
-
-服务端登录鉴权使用 HMAC-SHA256 JWT。开发环境默认 `JwtSecret` 可直接使用；如果要模拟更真实的环境，可以启动时指定：
-
-```powershell
-.\start-all.ps1 -JwtSecret "换成你自己的长随机字符串"
-```
-
-如果使用项目自带的本地开发实例，root 默认无密码：
-
-```powershell
-.\scripts\start-local-mysql.ps1
-.\scripts\check-mysql.ps1 -Init -User root
-.\start-server.ps1 -MysqlUser root
-```
-
-## 系统架构
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   UI Layer (Compose)                 │
-│  LoginScreen │ MainScreen │ ChatScreen │ ...12 routes│
-├─────────────────────────────────────────────────────┤
-│               ViewModel (StateFlow)                  │
-├─────────────────────────────────────────────────────┤
-│                Repository Layer                      │
-├─────────────────────────────────────────────────────┤
-│            DAO Layer (ContentValues/Cursor)          │
-├─────────────────────────────────────────────────────┤
-│              SQLite (11 tables, v8)                  │
-└─────────────────────────────────────────────────────┘
-                            ↕
-┌─────────────────────────────────────────────────────┐
-│                    IM Layer                          │
-│  ImClient → ConnectionManager → WebSocket            │
-│       ↓                      ↓                       │
-│  SyncManager            HeartbeatManager             │
-│       ↓                  ReconnectManager            │
-│  EventProcessor                                      │
-├─────────────────────────────────────────────────────┤
-│               Protocol Layer                         │
-│  ProtocolCodec (encode/decode + CRC32)               │
-│  Packet │ Cmd (18 command types)                     │
-└─────────────────────────────────────────────────────┘
-```
+客户端 UI 不直接依赖网络结果展示消息，消息、会话、用户和群组状态会先落到 SQLite，再由本地数据驱动页面刷新。服务端维护内存状态并通过 MySQL 保存状态快照。
 
 ## 自定义协议
 
+WebSocket 使用二进制包，包体是 UTF-8 JSON。
+
+```text
+┌──────────┬─────────┬────────┬────────┬──────────┬─────────┬────────┐
+│ Magic(2) │ Ver(1)  │ Cmd(1) │ Seq(8) │ Len(4)   │ Body(N) │ CRC(4) │
+│ 0x4C43   │ 1       │ byte   │ int64  │ int32    │ JSON    │ CRC32  │
+└──────────┴─────────┴────────┴────────┴──────────┴─────────┴────────┘
 ```
-┌─────────┬─────────┬─────────┬─────────┬───────────┬─────────┬─────────┐
-│ Magic(2)│ Ver(1)  │ Cmd(1)  │ Seq(8)  │ Len(4)    │ Body(N) │ CRC(4)  │
-│ 0x4C43  │   1     │  1-99   │ uint64  │ uint32    │ JSON    │ CRC32   │
-└─────────┴─────────┴─────────┴─────────┴───────────┴─────────┴─────────┘
-```
 
-### 命令类型
+当前命令号：
 
-| Cmd | 名称 | 说明 |
-|-----|------|------|
-| 1 | AUTH | 客户端认证 |
-| 2 | AUTH_ACK | 认证确认 |
-| 3 | HEARTBEAT | 心跳 |
-| 4 | HEARTBEAT_ACK | 心跳确认 |
-| 5 | NEW_EVENT_NOTIFY | 新事件通知 (携带 latestUserSeq) |
-| 6 | SYNC | 增量同步请求 |
-| 7 | SYNC_RESULT | 同步结果 (事件列表) |
-| 8 | RECALL_MESSAGE | 撤回消息 (C→S) |
-| 9 | CREATE_GROUP | 创建群组 (C→S) |
-| 10 | SEND_MESSAGE | 发送消息 |
-| 11 | MESSAGE_ACK | 消息确认 |
-| 12 | SEND_FRIEND_REQUEST | 发送好友申请 (C→S) |
-| 13 | ACCEPT_FRIEND_REQUEST | 同意好友申请 (C→S) |
-| 14 | MARK_READ | 已读回执 (C→S) |
-| 15 | UPDATE_PROFILE | 更新个人资料 (C→S) |
-| 16 | ADD_GROUP_MEMBERS | 邀请群成员 (C→S) |
-| 18 | READ_NOTIFY | 在线即时已读通知 (S→C) |
-| 99 | ERROR | 错误 |
+| Cmd | 名称 | 方向 |
+| --- | --- | --- |
+| 1 | AUTH | C -> S |
+| 2 | AUTH_ACK | S -> C |
+| 3 | HEARTBEAT | C -> S |
+| 4 | HEARTBEAT_ACK | S -> C |
+| 5 | NEW_EVENT_NOTIFY | S -> C |
+| 6 | SYNC | C -> S |
+| 7 | SYNC_RESULT | S -> C |
+| 8 | RECALL_MESSAGE | C -> S / S -> C ACK |
+| 9 | CREATE_GROUP | C -> S / S -> C ACK |
+| 10 | SEND_MESSAGE | C -> S |
+| 11 | MESSAGE_ACK | S -> C |
+| 12 | SEND_FRIEND_REQUEST | C -> S |
+| 13 | ACCEPT_FRIEND_REQUEST | C -> S |
+| 14 | MARK_READ | C -> S |
+| 15 | UPDATE_PROFILE | C -> S |
+| 16 | ADD_GROUP_MEMBERS | C -> S |
+| 17 | REJECT_FRIEND_REQUEST | C -> S |
+| 18 | READ_NOTIFY | S -> C |
+| 19 | UPDATE_CONVERSATION_SETTINGS | C -> S |
+| 99 | ERROR | S -> C |
 
-## seqsvr 同步模型
+## 消息同步模型
 
-```
-服务端推送 NEW_EVENT_NOTIFY(latestUserSeq)
-  ↓
+LightChat 采用类似 seqsvr 的用户维度增量同步：
+
+```text
+服务端生成 InboxEvent(userSeq)
+        ↓
+在线用户收到 NEW_EVENT_NOTIFY(latestUserSeq)
+        ↓
 客户端发现 latestUserSeq > localLastUserSeq
-  ↓
+        ↓
 客户端发送 SYNC(lastUserSeq)
-  ↓
-服务端返回 userSeq > lastUserSeq 的事件列表
-  ↓
-EventProcessor 按 userSeq 顺序处理 9 种事件:
-  NEW_MESSAGE(1) → 写入 message 表 + 更新 conversation
-  MESSAGE_RECALL(2) → 标记消息撤回
-  MESSAGE_READ(3) → 更新已读状态
-  GROUP_CREATED(4) → 创建群组 + 成员 + 会话
-  GROUP_MEMBER_JOIN(5) → 添加群成员
-  GROUP_MEMBER_LEAVE(6) → 移除群成员
-  FRIEND_REQUEST(7) → 写入好友申请表
-  FRIEND_ACCEPTED(8) → 建立好友关系
-  USER_UPDATE(9) → 更新用户资料
-  ↓
-更新 lastUserSeq
+        ↓
+服务端返回 userSeq 更大的事件列表
+        ↓
+客户端 EventProcessor 串行处理事件并写入 SQLite
+        ↓
+落库成功后更新 lastUserSeq
 ```
 
-核心原则：**先成功落库，再更新 lastUserSeq**，防止数据丢失。
+关键原则是先落库，再推进 `lastUserSeq`。这样即使客户端处理过程中崩溃，下次仍可以从旧的 `lastUserSeq` 重新拉取，避免丢消息。
 
-## 消息状态机
+## 三套序列号
 
-```
-CREATED → SENDING → SENT → DELIVERED → READ
-                ↘ (10s超时) → FAILED → (手动重发) → SENDING
-```
+| 字段 | 生成方 | 作用 |
+| --- | --- | --- |
+| `clientSeq` | 客户端 | 标识本地发送顺序，用于发送中、失败、重发等本地状态管理。 |
+| `conversationSeq` | 服务端 | 标识同一会话内的消息顺序，用于最终展示排序和已读进度。 |
+| `userSeq` | 服务端 | 标识某个用户收件箱中的事件顺序，用于增量同步。 |
 
-## 数据库表 (11 张, v8)
+## 数据存储
 
-| 表 | 说明 | 关键字段 |
-|----|------|----------|
-| user | 用户 | user_id, nickname, avatar, signature, region |
-| friend | 好友关系 | user_id, friend_id |
-| friend_request | 好友申请 | from_user_id, to_user_id, status |
-| conversation | 会话 | type, last_message, unread_count, at_me_count, is_pinned, is_hidden, mute |
-| message | 消息 | message_id(幂等), client_seq, conversation_seq, user_seq |
-| im_group | 群组 | group_id, group_name, owner_id, member_count |
-| group_member | 群成员 | group_id, user_id, role |
-| sync_state | 同步状态 | key-value (last_user_seq) |
-| conversation_member | 会话成员镜像 | last_read_seq, unread_count, mention_count |
-| message_receipt | 消息回执镜像 | message_id, user_id, receipt_type |
-| auth_session | 登录会话镜像 | token_id, user_id, expires_at |
+### Android SQLite
 
-### 会话排序
+当前本地数据库版本为 `12`，主要表包括：
 
-```sql
-ORDER BY is_pinned DESC, pinned_time DESC, last_message_time DESC
-```
+- `user`
+- `friend`
+- `friend_request`
+- `conversation`
+- `message`
+- `im_group`
+- `group_member`
+- `sync_state`
+- `conversation_member`
+- `message_receipt`
+- `auth_session`
 
-### 消息三套序列号
+### 服务端 MySQL
 
-- `client_seq` — 客户端本地序列号
-- `conversation_seq` — 会话内消息顺序
-- `user_seq` — 用户维度增量同步序列号
-
-## UI 架构 (13 个路由)
-
-```
-NavGraph
-├── login → LoginScreen
-├── main → MainScreen (底部导航)
-│   ├── [消息] Tab → ConversationListScreen
-│   │   ├── 长按: 置顶/免打扰/隐藏/删除/标记未读
-│   │   └── → ChatScreen (状态指示/撤回/多选转发/@提醒)
-│   ├── [联系人] Tab → ContactScreen
-│   │   └── → FriendRequestScreen / ProfileScreen / GroupCreateScreen
-│   └── [我的] Tab → ProfileScreen (编辑/退出)
-├── chat/{id}/{title} → ChatScreen
-├── chat_search/{id}/{title} → ChatSearchScreen (会话内搜索)
-├── search → SearchScreen (全局搜索: 联系人+聊天记录)
-├── add_friend → AddFriendScreen (全库用户搜索+加好友)
-├── group_create → GroupCreateScreen (选人+群名)
-├── friend_requests → FriendRequestScreen (同意/拒绝)
-├── profile?userId={uid} → ProfileScreen (自浏览/编辑/好友/陌生人)
-├── forward_select → ForwardSelectScreen (逐条/合并)
-└── forward_preview → ForwardPreviewScreen
-```
-
-## 核心功能
-
-### 已完成
-
-- [x] 登录/注册 (真实 JWT + 服务端会话表 + 自动登录)
-- [x] WebSocket 长连接 + 自定义二进制协议 (18 种命令)
-- [x] 心跳检测 (20s) + 指数退避重连 (1s→30s) + 网络恢复/回前台重连
-- [x] seqsvr 增量同步模型 (NEW_EVENT_NOTIFY → SYNC → SYNC_RESULT)
-- [x] EventProcessor 事件处理 (9 种事件类型)
-- [x] 单聊/群聊文本消息 (receiverId/groupId 完整链路)
-- [x] 消息状态机 (SENDING→SENT→FAILED, ACK超时重试)
-- [x] conversationSeq 服务端确认 + 客户端乱序重排
-- [x] messageId 严格幂等 (重复发送复用原 ACK，不重复入库或投递)
-- [x] 群成员列表 + 邀请成员 + @多人高亮 + 独立 @我未读计数
-- [x] 图片消息 (HTTP 上传 + 阿里云 OSS + 缩略图优先显示 + 原图后台加载 + Base64 兼容回退)
-- [x] 消息撤回 (本人 2 分钟窗口 + 服务端 ACK 后落本地状态 + 双端同步)
-- [x] 消息转发 (逐条/合并, 实际构造消息发送)
-- [x] 多选消息 → 批量转发
-- [x] 好友申请 (搜索→发送申请→同意/拒绝, 服务端同步)
-- [x] 建群 (多选联系人→群名, 服务端同步, 离线降级)
-- [x] 会话操作: 置顶/免打扰/标记未读/不显示/删除
-- [x] 会话未读角标
-- [x] 个人资料编辑 (昵称/签名/地区 + 服务端同步到好友)
-- [x] 全局搜索 (联系人 + 聊天记录)
-- [x] 会话内搜索 (ChatSearchScreen, SQL LIKE 查询 + 关键词高亮)
-- [x] 添加好友独立页面 (全库搜索 + 好友状态判断)
-- [x] 聊天气泡头像 + 点击跳转资料页
-- [x] 资料页区分本人/好友/陌生人
-- [x] 已读回执 (客户端上报 + 在线 READ_NOTIFY 即时更新 + 服务端同步兜底)
-- [x] Mock 厂商推送 (离线队列 + 被杀进程广播唤醒 + 系统通知)
-- [x] Debug 调试面板 + 压力测试
-
-### Mock 厂商推送验收
-
-服务端会把每条新消息写入 mock 厂商推送队列。开发环境可用脚本模拟厂商系统向 Android 投递：
-
-```powershell
-adb -s emulator-5556 shell am force-stop com.lightchat
-.\scripts\deliver-mock-push.ps1 -UserId "接收方账号" -DeviceSerial "emulator-5556"
-```
-
-脚本会携带 `X-Mock-Push-Key`，从 `GET /api/mock-push/pending?userId=...` 拉取待投递推送，并通过指定模拟器或真机的显式广播唤醒 `MockVendorPushReceiver`。广播携带 `--include-stopped-packages`，可覆盖本地 `force-stop` 验收场景。接收器会展示系统通知；仅当前台已经打开对应会话时抑制重复通知。用户点击通知后进入对应会话。默认 key 为 `lightchat-local-mock`，可通过服务端环境变量 `MOCK_PUSH_KEY` 和脚本参数 `-MockPushKey` 同步替换。
-
-需要自动投递时，启动持续轮询桥接：
-
-```powershell
-.\scripts\watch-mock-push.ps1 `
-  -Binding "19970295701=emulator-5554","18970261938=emulator-5556" `
-  -PollIntervalMs 200
-```
-
-连接模拟器或真机调试时，也可以自动扫描所有 ADB 设备，并读取各设备当前登录账号：
-
-```powershell
-.\scripts\watch-mock-push.ps1 -AutoDiscoverConnectedDevices -PollIntervalMs 200 -DiscoveryIntervalMs 1000
-```
-
-固定 `-Binding` 模式不会扫描设备，延迟最低。需要支持设备内切换账号时，同时启用 `-AutoDiscoverConnectedDevices`：脚本启动时扫描一次，之后先投递缓存绑定，再默认每 `1s` 刷新映射；在线设备检测到的新账号会覆盖该设备旧的固定映射，固定映射仅作为设备暂时断开 USB 时的兜底。`watch-mock-push.ps1` 是本地开发环境中的 mock 厂商服务，依赖 USB、ADB 和电脑上的桥接脚本。正式发布时，需要接入 FCM、华为、小米、OPPO 等真实推送 SDK：Android 上报 push token，服务端调用厂商 API，系统推送服务负责唤醒应用并投递通知。
-
-### 图片对象存储配置
-
-图片消息的 WebSocket 内容只传 `IMAGE` 消息和图片元信息，图片二进制通过 HTTP 上传给服务端。服务端使用阿里云 OSS 保存原图和缩略图，并在消息 `extra` 中写入：
-
-```json
-{
-  "fileId": "文件ID",
-  "imageUrl": "原图访问地址",
-  "thumbnailUrl": "缩略图访问地址",
-  "objectKey": "原图对象Key",
-  "thumbnailObjectKey": "缩略图对象Key",
-  "storageProvider": "aliyun_oss"
-}
-```
-
-客户端发送端直接显示本机原图；接收端先显示缩略图，后台下载原图成功后自动替换为原图。上传失败时，客户端仍保留 Base64 兼容回退，方便本地调试。
-
-#### 阿里云 OSS
-
-启用阿里云 OSS 前，需要在阿里云控制台创建 Bucket，并准备以下信息：
+服务端默认连接：
 
 ```text
-AccessKey ID / AccessKey Secret
-Bucket: 例如 lightchat-media
-Endpoint: 例如 oss-cn-beijing.aliyuncs.com、oss-cn-shanghai.aliyuncs.com
+jdbc:mysql://127.0.0.1:3307/lightchat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
 ```
 
-PowerShell 启动服务端前设置环境变量：
+服务端通过 `MySqlStatePersistence` 将完整状态快照保存到 MySQL。当前 GitHub 仓库不上传本机 MySQL 数据目录。
 
-```powershell
-$env:MEDIA_STORAGE_PROVIDER="aliyun_oss"
-$env:ALIYUN_OSS_ACCESS_KEY_ID="你的 AccessKey ID"
-$env:ALIYUN_OSS_ACCESS_KEY_SECRET="你的 AccessKey Secret"
-$env:ALIYUN_OSS_BUCKET="lightchat-media"
-$env:ALIYUN_OSS_ENDPOINT="oss-cn-beijing.aliyuncs.com"
-$env:ALIYUN_OSS_KEY_PREFIX="lightchat"
-$env:ALIYUN_OSS_PUBLIC_READ="true"
+可用环境变量：
 
-.\start-server.ps1
-```
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `MYSQL_URL` | `jdbc:mysql://127.0.0.1:3307/lightchat?...` | MySQL JDBC 地址 |
+| `MYSQL_USER` | `root` | MySQL 用户名 |
+| `MYSQL_PASSWORD` | 空 | MySQL 密码 |
+| `MYSQL_STATE_KEY` | `default` | 状态快照 key |
 
-如果 Bucket 不是公共读，设置：
+## 媒体存储
 
-```powershell
-$env:ALIYUN_OSS_PUBLIC_READ="false"
-$env:ALIYUN_OSS_SIGNED_URL_SECONDS="3600"
-```
+图片上传走 HTTP 接口，消息本身只通过 WebSocket 发送图片元信息。服务端当前支持阿里云 OSS。
 
-这时服务端返回临时签名 URL，有效期默认 1 小时。为了 IM 图片长期可见，当前测试阶段建议先使用公共读，或者配置自定义域名/CDN 后设置：
+必填环境变量：
 
-```powershell
-$env:ALIYUN_OSS_PUBLIC_BASE_URL="https://你的图片域名"
-```
+| 变量 | 说明 |
+| --- | --- |
+| `MEDIA_STORAGE_PROVIDER` | 设为 `aliyun_oss`，也可省略，默认就是阿里云 OSS |
+| `ALIYUN_OSS_ACCESS_KEY_ID` | AccessKey ID |
+| `ALIYUN_OSS_ACCESS_KEY_SECRET` | AccessKey Secret |
+| `ALIYUN_OSS_BUCKET` | Bucket 名称 |
+| `ALIYUN_OSS_ENDPOINT` | 例如 `oss-cn-beijing.aliyuncs.com` |
 
-阿里云 OSS 默认公开访问地址格式是：
+可选环境变量：
 
-```text
-https://<Bucket>.<Endpoint>/<objectKey>
-```
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `ALIYUN_OSS_KEY_PREFIX` | `lightchat` | 对象 key 前缀 |
+| `ALIYUN_OSS_PUBLIC_READ` | `true` | 是否直接返回公开 URL |
+| `ALIYUN_OSS_SIGNED_URL_SECONDS` | `3600` | 私有 Bucket 签名 URL 有效期 |
+| `ALIYUN_OSS_PUBLIC_BASE_URL` | 空 | 自定义域名或 CDN 域名 |
 
-例如：
+接收端会先展示缩略图，进入全屏或后台拉取成功后再替换为原图。本地会缓存头像、缩略图和原图。
 
-```text
-https://lightchat-media.oss-cn-beijing.aliyuncs.com/lightchat/images/original/2026/06/04/xxx.jpg
-```
+## HTTP API
 
-### 连接状态机
+服务端 HTTP 默认端口为 `8081`。
 
-```
-DISCONNECTED → CONNECTING → CONNECTED → AUTHENTICATED
-     ↑              ↓           ↓
-     └── RECONNECTING ←────────┘
-```
+| 路径 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/register` | POST | 注册 |
+| `/api/login` | POST | 登录 |
+| `/api/bootstrap` | GET | 登录后拉取用户基础数据 |
+| `/api/users/search` | GET | 搜索用户 |
+| `/api/users/profile` | GET | 拉取用户资料 |
+| `/api/images/upload` | POST | 上传原图和缩略图 |
+| `/api/images/refresh-url` | POST | 刷新私有 OSS 签名 URL |
+| `/api/mock-push/pending` | GET | 本地 mock 推送拉取待投递消息 |
 
-## 构建与运行
+除注册、登录和 mock 推送接口外，其余接口需要 `Authorization: Bearer <token>`。
 
-```bash
-cd E:\Android\LightChat
-./gradlew assembleDebug
-```
-
-输出: `app/build/outputs/apk/debug/app-debug.apk`
+## 本地运行
 
 ### 环境要求
 
-- Android Studio Hedgehog | 2023.1+
-- AGP 8.2.2
-- Kotlin 1.9.22
-- minSdk 26 / targetSdk 34
 - JDK 17
+- Android Studio / Android SDK
+- MySQL 8.x
+- 阿里云 OSS Bucket 和 AccessKey
 
-## 项目亮点
+### 1. 配置服务端环境变量
 
-1. 参考微信 seqsvr 思想 — userSeq 增量同步
-2. WebSocket 只负责通知 — SYNC 拉取保证最终一致
-3. SQLite 作为本地状态源 — UI 不直接依赖网络
-4. EventProcessor 统一事件处理 — 可扩展事件类型
-5. messageId 幂等键 — 消息去重
-6. 三套序列号 — clientSeq/conversationSeq/userSeq
-7. 自定义二进制协议 — CRC32 校验 + 可扩展命令
-8. 微信式 UI — 底部导航/长按菜单/转发/撤回/名片
-9. MySQL 镜像表 — 支持服务端状态恢复与可视化排查
+PowerShell 示例：
+
+```powershell
+$env:SERVER_PORT="8080"
+$env:SERVER_HTTP_PORT="8081"
+$env:JWT_SECRET="请换成自己的长随机字符串"
+
+$env:MYSQL_URL="jdbc:mysql://127.0.0.1:3307/lightchat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true"
+$env:MYSQL_USER="root"
+$env:MYSQL_PASSWORD="你的 MySQL 密码"
+$env:MYSQL_STATE_KEY="default"
+
+$env:MEDIA_STORAGE_PROVIDER="aliyun_oss"
+$env:ALIYUN_OSS_ACCESS_KEY_ID="你的 AccessKey ID"
+$env:ALIYUN_OSS_ACCESS_KEY_SECRET="你的 AccessKey Secret"
+$env:ALIYUN_OSS_BUCKET="你的 Bucket"
+$env:ALIYUN_OSS_ENDPOINT="oss-cn-beijing.aliyuncs.com"
+$env:ALIYUN_OSS_KEY_PREFIX="lightchat"
+```
+
+### 2. 启动服务端
+
+```powershell
+.\gradlew.bat :server:run
+```
+
+默认服务：
+
+```text
+WebSocket: ws://<服务端IP>:8080/ws
+HTTP:      http://<服务端IP>:8081
+```
+
+### 3. 配置 Android 客户端服务地址
+
+当前客户端服务地址写在代码里，需要按你的电脑局域网 IP 修改：
+
+- HTTP: [AuthApiClient.kt](app/src/main/java/com/lightchat/data/remote/AuthApiClient.kt)
+- WebSocket: [ConnectionManager.kt](app/src/main/java/com/lightchat/im/ConnectionManager.kt)
+
+示例：
+
+```kotlin
+const val DEFAULT_BASE_URL = "http://192.168.1.10:8081"
+const val DEFAULT_URL = "ws://192.168.1.10:8080/ws"
+```
+
+模拟器访问宿主机时可以使用 Android 模拟器网关地址；真机需要和电脑在同一网络下，并使用电脑的局域网 IP。
+
+### 4. 构建 APK
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+```
+
+输出路径：
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+## 测试与 CI
+
+本地运行单元测试：
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest :server:test
+```
+
+完整构建：
+
+```powershell
+.\gradlew.bat :app:assembleDebug :server:installDist
+```
+
+GitHub Actions 会在 `push`、`pull_request` 和手动触发时执行：
+
+1. 配置 JDK 17 和 Android SDK。
+2. 运行 Android 与服务端单元测试。
+3. 构建 Android debug APK 和服务端 installDist。
+
+测试范围详见 [TESTING.md](TESTING.md)。
+
+## 离线通知说明
+
+当前项目没有接入真实厂商推送 SDK，而是提供了本地 Mock 厂商推送能力：
+
+- 服务端发现用户 WebSocket 不在线时，将消息写入 mock push 队列。
+- 本地开发环境可以通过 ADB 显式广播投递给 Android。
+- `MockVendorPushReceiver` 收到广播后展示系统通知，并支持从通知进入对应会话。
+
+相关环境变量：
+
+| 变量 | 说明 |
+| --- | --- |
+| `MOCK_PUSH_KEY` | 拉取 mock 推送队列的密钥，默认 `lightchat-local-mock` |
+| `MOCK_PUSH_ADB_PATH` | adb 路径，默认 `adb` |
+| `MOCK_PUSH_ADB_DEVICES` | 用户 ID 到设备序列号的映射 |
+| `MOCK_PUSH_ADB_ALL` | 没有单独映射时广播到的设备列表 |
+
+正式线上环境应接入 FCM、华为、小米、OPPO、vivo 等厂商推送 SDK，由 Android 上报 push token，服务端调用厂商 API 投递通知。
+
+## 安全说明
+
+- WebSocket 自定义协议当前只做结构校验和 CRC32，不等于加密。
+- 如果使用 `ws://` 和 `http://`，局域网抓包可以看到明文 JSON body。
+- 生产环境应使用 HTTPS/WSS，并配置可信证书。
+- AccessKey、MySQL 密码、JWT Secret 不能提交到仓库。
+- README 中的变量名只用于说明，真实密钥应通过环境变量或密钥管理服务配置。
+
+## 当前限制
+
+- 客户端服务地址仍是编译期常量，尚未抽成 BuildConfig 或运行时配置。
+- 服务端状态以 MySQL 快照方式保存，尚未拆成完整关系型业务表写入模型。
+- Mock 厂商推送只适合本地调试，不代表真实离线推送能力。
+- UI 自动化测试尚未接入，当前 CI 主要覆盖纯 JVM 单元测试和构建。
+- 图片存储当前只支持阿里云 OSS。
+
+## 贡献与开发建议
+
+- 业务代码修改后先运行 `:app:testDebugUnitTest` 和 `:server:test`。
+- 涉及协议命令时，同时修改客户端和服务端的 `Cmd`、`ProtocolCodec` 和相关测试。
+- 涉及消息同步时，优先保证“落库成功后再推进 `lastUserSeq`”。
+- 涉及图片或头像时，保留本地缓存优先策略，避免列表反复网络加载。
