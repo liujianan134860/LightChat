@@ -29,12 +29,22 @@ private fun notifyImageCacheChanged(messageId: String) {
     imageCacheVersions[messageId] = (imageCacheVersions[messageId] ?: 0) + 1
 }
 
+fun calculateBitmapInSampleSize(outWidth: Int, outHeight: Int, maxDim: Int): Int {
+    if (outWidth <= 0 || outHeight <= 0 || maxDim <= 0) return 1
+    val ratio = maxOf(outWidth, outHeight).toFloat() / maxDim.toFloat()
+    var sampleSize = 1
+    while (sampleSize * 2 <= ratio) {
+        sampleSize *= 2
+    }
+    return sampleSize
+}
+
 fun decodeSampledBitmap(path: String, maxDim: Int = 2048): Bitmap? {
     return try {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, opts)
-        val scale = maxOf(1, maxOf(opts.outWidth, opts.outHeight) / maxDim)
-        BitmapFactory.Options().apply { inSampleSize = scale }.let {
+        val sampleSize = calculateBitmapInSampleSize(opts.outWidth, opts.outHeight, maxDim)
+        BitmapFactory.Options().apply { inSampleSize = sampleSize }.let {
             BitmapFactory.decodeFile(path, it)
         }
     } catch (_: Exception) {

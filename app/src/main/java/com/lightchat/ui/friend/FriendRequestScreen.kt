@@ -1,5 +1,7 @@
 package com.lightchat.ui.friend
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,8 +25,11 @@ import com.lightchat.event.AppEvents
 import com.lightchat.model.FriendRequest
 import com.lightchat.model.RequestStatus
 import com.lightchat.model.User
+import com.lightchat.ui.components.AvatarCacheLoader
 import com.lightchat.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +126,36 @@ private fun FriendRequestItem(
     onAccept: () -> Unit,
     onReject: () -> Unit
 ) {
+    val app = LightChatApplication.instance
+    val context = LocalContext.current
+    val targetUser = remember(request.fromUserId) {
+        app.userDao.getById(request.fromUserId)
+    }
+    val avatarBitmap by produceState<Bitmap?>(initialValue = null, targetUser?.avatarUrl, targetUser?.avatarVersion) {
+        val user = targetUser
+        value = if (user?.avatarUrl?.isNotBlank() == true) {
+            withContext(Dispatchers.IO) {
+                AvatarCacheLoader.loadAvatar(
+                    context = context,
+                    userId = user.userId,
+                    avatarUrl = user.avatarUrl,
+                    avatarVersion = user.avatarVersion,
+                    avatarFallback = "",
+                    allowNetwork = true
+                ).bitmap
+            }
+        } else {
+            null
+        }
+    }
+    val avatarColor = remember(targetUser?.avatar) {
+        targetUser?.avatar?.takeIf { it.startsWith("#") }?.let {
+            try { Color(android.graphics.Color.parseColor(it)) } catch (_: Exception) { WeChatGreen }
+        } ?: WeChatGreen
+    }
+    val displayName = request.fromNickname.ifBlank { request.fromUserId }
+    val displayInitial = displayName.take(1)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -128,10 +166,19 @@ private fun FriendRequestItem(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(WeChatGreen.copy(alpha = 0.2f)),
+                .background(avatarColor.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            Text(request.fromNickname.take(1), color = WeChatGreen, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            val bm = avatarBitmap
+            if (bm != null) {
+                Image(
+                    bitmap = bm.asImageBitmap(),
+                    contentDescription = "头像",
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Text(displayInitial, color = avatarColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {

@@ -17,6 +17,7 @@ import com.lightchat.model.Message
 import com.lightchat.model.MessageStatus
 import com.lightchat.model.MessageType
 import com.lightchat.model.User
+import com.lightchat.ui.chat.calculateBitmapInSampleSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -496,7 +497,7 @@ class ChatViewModel : ViewModel() {
             val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
             val maxDim = 1280
-            val sampleSize = maxOf(1, maxOf(opts.outWidth, opts.outHeight) / maxDim)
+            val sampleSize = calculateBitmapInSampleSize(opts.outWidth, opts.outHeight, maxDim)
             val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
 
             var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOpts) ?: return null

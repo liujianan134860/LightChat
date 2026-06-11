@@ -439,9 +439,8 @@ private fun decodeThumb(context: android.content.Context, uri: Uri, maxDim: Int)
             val opts = BitmapFactory.Options()
             opts.inJustDecodeBounds = true
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-            val scale = maxOf(1, maxOf(opts.outWidth, opts.outHeight) / maxDim)
             opts.inJustDecodeBounds = false
-            opts.inSampleSize = scale
+            opts.inSampleSize = calculateBitmapInSampleSize(opts.outWidth, opts.outHeight, maxDim)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
         }
     } catch (_: Exception) { null }

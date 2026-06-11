@@ -557,9 +557,8 @@ private fun decodeThumbForPicker(context: android.content.Context, uri: Uri, max
             val opts = BitmapFactory.Options()
             opts.inJustDecodeBounds = true
             BitmapFactory.decodeFile(path, opts)
-            val scale = maxOf(1, maxOf(opts.outWidth, opts.outHeight) / maxDim)
             opts.inJustDecodeBounds = false
-            opts.inSampleSize = scale
+            opts.inSampleSize = calculateBitmapInSampleSize(opts.outWidth, opts.outHeight, maxDim)
             BitmapFactory.decodeFile(path, opts)
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim), null)
