@@ -154,8 +154,10 @@ fun GroupCreateScreen(
                     onValueChange = { groupNameInput = it },
                     label = { Text("群名称") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
+                        focusedBorderColor = WeChatGreen,
+                        unfocusedBorderColor = DividerColor,
+                        focusedLabelColor = WeChatGreen,
+                        cursorColor = WeChatGreen
                     ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

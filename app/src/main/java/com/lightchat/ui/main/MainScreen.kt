@@ -153,10 +153,6 @@ fun MainScreen(navController: NavHostController) {
 
                 1 -> ContactScreen(
                     modifier = Modifier.fillMaxSize(),
-                    onCreateGroup = { selectedIds ->
-                        app.lastMainTab = 1
-                        navController.navigate(Routes.GROUP_CREATE)
-                    },
                     onGroupListClick = {
                         app.lastMainTab = 1
                         navController.navigate(Routes.GROUP_LIST)

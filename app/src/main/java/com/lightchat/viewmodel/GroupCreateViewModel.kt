@@ -88,6 +88,10 @@ class GroupCreateViewModel : ViewModel() {
         )
     }
 
+    fun setSelectedMembers(userIds: Set<String>) {
+        _uiState.value = _uiState.value.copy(selectedMemberIds = userIds)
+    }
+
     fun onGroupNameChange(name: String) {
         _uiState.value = _uiState.value.copy(groupName = name)
     }
@@ -135,6 +139,10 @@ class GroupCreateViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    fun consumeCreatedState() {
+        _uiState.value = _uiState.value.copy(isCreated = false)
     }
 
     private fun persistLocalGroup(pending: PendingGroup) {

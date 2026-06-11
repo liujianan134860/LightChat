@@ -38,6 +38,7 @@ import com.lightchat.model.User
 import com.lightchat.ui.components.AvatarCacheLoader
 import com.lightchat.ui.theme.*
 import com.lightchat.viewmodel.ContactViewModel
+import com.lightchat.viewmodel.GroupCreateViewModel
 import java.text.Collator
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -48,14 +49,15 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ContactScreen(
     modifier: Modifier = Modifier,
-    onCreateGroup: (Set<String>) -> Unit = {},
     onGroupListClick: () -> Unit = {},
     onGroupClick: (conversationId: String, title: String) -> Unit = { _, _ -> },
     onProfileClick: (String) -> Unit = {},
     onFriendRequestsClick: () -> Unit = {},
-    viewModel: ContactViewModel = viewModel()
+    viewModel: ContactViewModel = viewModel(),
+    groupCreateViewModel: GroupCreateViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val groupCreateState by groupCreateViewModel.uiState.collectAsState()
     val app = LightChatApplication.instance
     val currentUserId = app.userSession.currentUserId
     val listState = rememberLazyListState()
@@ -63,6 +65,8 @@ fun ContactScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var pendingCount by remember { mutableIntStateOf(0) }
+    var showGroupNameDialog by remember { mutableStateOf(false) }
+    var groupNameInput by remember { mutableStateOf("") }
     val groupedFriends = remember(uiState.filteredFriends) {
         uiState.filteredFriends
             .sortedWith(contactComparator())
@@ -115,6 +119,16 @@ fun ContactScreen(
         }
     }
 
+    LaunchedEffect(groupCreateState.isCreated) {
+        if (groupCreateState.isCreated) {
+            val groupId = groupCreateState.createdGroupId
+            val groupName = groupCreateState.createdGroupName
+            groupCreateViewModel.consumeCreatedState()
+            viewModel.exitSelectionMode()
+            onGroupClick(ConversationId.group(groupId), groupName)
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Top bar
@@ -136,7 +150,10 @@ fun ContactScreen(
             actions = {
                 if (uiState.isSelectionMode) {
                     TextButton(
-                        onClick = { onCreateGroup(uiState.selectedFriendIds) },
+                        onClick = {
+                            groupCreateViewModel.setSelectedMembers(uiState.selectedFriendIds)
+                            showGroupNameDialog = true
+                        },
                         enabled = uiState.selectedFriendIds.size >= 2
                     ) {
                         Text("确定(${uiState.selectedFriendIds.size})", color = if (uiState.selectedFriendIds.size >= 2) WeChatGreen else TextSecondary)
@@ -307,6 +324,57 @@ fun ContactScreen(
                 }
             }
         }
+    }
+
+    if (showGroupNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showGroupNameDialog = false },
+            containerColor = TopBarBackground,
+            title = { Text("设置群名称") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = groupNameInput,
+                        onValueChange = { groupNameInput = it },
+                        label = { Text("群名称") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WeChatGreen,
+                            unfocusedBorderColor = DividerColor,
+                            focusedLabelColor = WeChatGreen,
+                            cursorColor = WeChatGreen
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (groupCreateState.errorMessage.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = groupCreateState.errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        groupCreateViewModel.setSelectedMembers(uiState.selectedFriendIds)
+                        groupCreateViewModel.onGroupNameChange(groupNameInput)
+                        groupCreateViewModel.createGroup()
+                        showGroupNameDialog = false
+                    },
+                    enabled = !groupCreateState.isCreating
+                ) {
+                    Text(if (groupCreateState.isCreating) "创建中..." else "确定", color = WeChatGreen)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGroupNameDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
