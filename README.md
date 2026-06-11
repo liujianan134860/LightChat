@@ -1,317 +1,191 @@
 # LightChat
 
-LightChat 是一个用于学习和实践 IM 核心链路的 Android 即时通讯项目。项目包含 Android 客户端和 Kotlin/JVM 服务端，围绕单聊、群聊、好友关系、消息同步、图片消息、已读回执、撤回、转发、离线通知等功能做了完整实现。
+LightChat 是一个面向 IM 核心链路实践的 Android 即时通讯项目。项目包含 Android 客户端、Kotlin/JVM 服务端、本地 SQLite 缓存、MySQL 持久化、阿里云 OSS 图片存储、WebSocket 自定义二进制协议、消息同步、已读回执、群聊、转发、图片预览和本地 Mock 离线推送等能力。
 
-> 当前仓库以源码、构建配置、测试文档和 CI 配置为主；本机启动脚本、数据库目录、测试截图、录屏、AccessKey 等调试产物不会上传到 GitHub。
+本仓库只保留项目源码、构建配置、CI 配置和测试/说明文档。本机启动脚本、数据库目录、调试截图、录屏、AccessKey、日志和临时测试数据已通过 `.gitignore` 排除。
 
-## 项目结构
+## 目录结构
 
 ```text
 LightChat/
-├── app/                    # Android 客户端
-├── server/                 # Kotlin/JVM 服务端
+├── app/                    # Android 客户端：Compose UI、SQLite、WebSocket、同步、通知
+├── server/                 # Kotlin/JVM 服务端：Netty WS、HTTP API、DataStore、MySQL、OSS
 ├── .github/workflows/      # GitHub Actions CI
-├── gradle/                 # Gradle wrapper 配置
-├── build.gradle.kts
-├── settings.gradle.kts
-├── TESTING.md              # 测试范围与运行方式
-└── README.md
+├── gradle/                 # Gradle Wrapper
+├── README.md               # 架构图、运行指南、功能勾选表
+├── TESTING.md              # 测试范围和运行方式s
+├── AI_USAGE.md             # AI 辅助方案采纳记录
+├── DECISIONS.md            # ADR 架构决策记录
+└── BUGFIX.md               # 真实踩坑、排查过程和根因
 ```
 
 ## 技术栈
 
 | 模块 | 技术 |
 | --- | --- |
-| Android | Kotlin, Jetpack Compose, Material 3, Navigation Compose |
-| 客户端存储 | SQLiteOpenHelper, DAO, Repository |
+| Android UI | Kotlin, Jetpack Compose, Material 3, Navigation Compose |
+| 客户端状态 | ViewModel, StateFlow, Repository |
+| 客户端存储 | SQLiteOpenHelper, DAO, 本地多账号隔离 |
 | 客户端网络 | OkHttp HTTP + WebSocket |
 | 服务端 | Kotlin/JVM, Netty WebSocket, JDK HttpServer |
-| 服务端存储 | MySQL 快照持久化 |
-| 媒体存储 | 阿里云 OSS |
-| 协议 | 自定义二进制协议 + JSON body + CRC32 |
-| 测试 | JUnit4, Gradle, GitHub Actions |
+| 服务端存储 | 内存 DataStore + MySQL 快照/镜像表 |
+| 媒体存储 | 阿里云 OSS，私有 Bucket 签名 URL，本地缓存 |
+| 自定义协议 | WebSocket 二进制帧 + JSON body + CRC32 |
+| 测试与 CI | JUnit4, Gradle, GitHub Actions |
 
-## 功能勾选表
+## 工具使用要求对照
 
-| 模块 | 状态 | 已实现功能 |
-| --- | --- | --- |
-| 账号体系 | ✅ | 注册、登录、自动登录、退出登录 |
-| 账号体系 | ✅ | JWT 签发、Bearer 鉴权、服务端会话校验、账号异地登录踢旧连接 |
-| 账号体系 | ✅ | 密码哈希存储，支持旧明文密码登录后自动升级为哈希 |
-| 个人资料 | ✅ | 昵称、头像、个性签名、地区编辑 |
-| 个人资料 | ✅ | 用户资料服务端同步，好友端收到 `USER_UPDATE` 后更新本地缓存 |
-| 个人资料 | ✅ | 头像 URL、头像版本号、本地头像缓存、远端头像拉取 |
-| 好友关系 | ✅ | 按账号搜索用户 |
-| 好友关系 | ✅ | 发送好友申请、收到好友申请通知、同意申请、拒绝申请 |
-| 好友关系 | ✅ | 好友关系双向建立，自动创建单聊会话 |
-| 好友关系 | ✅ | 联系人列表分页加载和联系人搜索 |
-| 会话列表 | ✅ | 单聊、群聊会话展示 |
-| 会话列表 | ✅ | 会话置顶、免打扰、隐藏、删除、标记未读 |
-| 会话列表 | ✅ | 未读计数、免打扰红点、底部导航未读汇总 |
-| 会话列表 | ✅ | @我摘要，支持 `[有人@我]` 和多条 @我 数量展示 |
-| 会话列表 | ✅ | LightChat 助手欢迎会话，新用户默认展示“欢迎使用LightChat!” |
-| 单聊消息 | ✅ | 文本消息发送、接收、ACK、失败状态、重发 |
-| 单聊消息 | ✅ | 消息本地排序，失败消息保持正确时间顺序 |
-| 单聊消息 | ✅ | 已读回执，双方停留聊天详情页时可即时更新 |
-| 单聊消息 | ✅ | 消息撤回，限制本人 2 分钟内撤回 |
-| 单聊消息 | ✅ | 删除本地气泡，不影响对方消息 |
-| 群聊消息 | ✅ | 群聊创建、群成员同步、群成员列表 |
-| 群聊消息 | ✅ | 邀请群成员，聊天中展示“xxx邀请xxx加入了群聊”系统提示 |
-| 群聊消息 | ✅ | 群聊文本消息收发和群成员投递 |
-| 群聊消息 | ✅ | 群聊已读人数 `x/y 已读` |
-| 群聊消息 | ✅ | @成员、@多人、@所有人 |
-| 群聊消息 | ✅ | @我的未读消息进入群聊后定位并高亮 |
-| 群聊消息 | ✅ | @他人的消息单独显示被 @ 人的已读/未读状态 |
-| 长按菜单 | ✅ | 文字、emoji、图片、名片、合并转发气泡长按菜单 |
-| 长按菜单 | ✅ | 复制、转发、多选、撤回、删除等操作按消息类型显示 |
-| 长按菜单 | ✅ | 微信式气泡附近浮层菜单，不再使用底部弹窗 |
-| 多选模式 | ✅ | 多选消息、取消多选、左侧选择框、批量删除、批量转发 |
-| 转发 | ✅ | 单条转发 |
-| 转发 | ✅ | 多选后支持逐条转发和合并转发 |
-| 转发 | ✅ | 图片、名片、合并转发消息均支持转发 |
-| 转发 | ✅ | 合并转发详情页支持文本、图片、名片、嵌套聊天记录展示 |
-| 名片 | ✅ | 推荐好友名片 |
-| 名片 | ✅ | 名片消息可点击查看资料，非好友可从资料页添加好友 |
-| 名片 | ✅ | 名片消息支持长按、转发、多选、撤回、删除 |
-| 图片消息 | ✅ | 相册网格选择、多图选择、按选择顺序发送 |
-| 图片消息 | ✅ | 相册分页加载、快速滑动选择、预览页选择状态保持 |
-| 图片消息 | ✅ | 图片预览、放大、缩小、左右滑动切换 |
-| 图片消息 | ✅ | 图片编辑、涂鸦编辑、编辑后仅在确认后生效 |
-| 图片消息 | ✅ | 发送端直接显示本地原图 |
-| 图片消息 | ✅ | 接收端先显示缩略图，点击全屏或后台拉取后替换为原图 |
-| 图片消息 | ✅ | 全屏图片滑动切换时自动拉取当前图片原图 |
-| 图片消息 | ✅ | 全屏图片下载到系统相册 |
-| 图片消息 | ✅ | 图片全屏转发 |
-| 媒体存储 | ✅ | HTTP multipart 上传原图和缩略图 |
-| 媒体存储 | ✅ | 阿里云 OSS 对象存储，支持公开 URL 和私有签名 URL |
-| 媒体存储 | ✅ | 图片 URL 过期后刷新签名 URL |
-| 媒体存储 | ✅ | 本地图片、缩略图、头像缓存优先加载 |
-| 搜索 | ✅ | 首页全局搜索联系人和聊天记录 |
-| 搜索 | ✅ | 单聊右上角会话内搜索 |
-| 搜索 | ✅ | 群聊右上角会话内搜索 |
-| 搜索 | ✅ | 搜索结果点击后跳转目标消息并高亮 3 秒 |
-| 搜索 | ✅ | 长聊天记录定位到屏幕中部，避免目标消息出现在窗口外 |
-| 搜索 | ✅ | 搜索聊天记录时排除图片路径 |
-| 聊天分页 | ✅ | 历史消息分页加载 |
-| 聊天分页 | ✅ | 定位到中间消息后支持向上加载历史和向下加载新消息 |
-| 聊天分页 | ✅ | 一万条消息场景下的中间定位和滚动优化 |
-| 聊天输入 | ✅ | 文本输入、重新编辑撤回消息、@成员后光标定位到尾部 |
-| 聊天输入 | ✅ | 真机键盘适配，输入栏跟随键盘 |
-| 页面动画 | ✅ | 聊天详情、资料页、名片页、群成员页等打开/关闭配套滑动动画 |
-| 页面动画 | ✅ | 相册页上滑打开、下滑关闭 |
-| 页面动画 | ✅ | 图片全屏从聊天气泡放大进入，退出时缩回原气泡位置 |
-| 通知 | ✅ | 前台/后台消息通知分流 |
-| 通知 | ✅ | 好友申请推送通知 |
-| 通知 | ✅ | 群聊推送显示群聊名和消息摘要 |
-| 通知 | ✅ | 免打扰会话不弹对应推送，且不参与底部未读汇总 |
-| Mock 推送 | ✅ | WebSocket 断开后服务端写入 mock push 队列 |
-| Mock 推送 | ✅ | ADB 显式广播模拟厂商推送，应用被杀后可展示本地通知 |
-| 长连接 | ✅ | OkHttp WebSocket 长连接 |
-| 长连接 | ✅ | AUTH 鉴权、20 秒心跳、连续 3 次心跳失败重连 |
-| 长连接 | ✅ | 指数退避重连，1s -> 2s -> 4s -> 8s -> 16s -> 30s |
-| 长连接 | ✅ | 网络恢复、应用回前台后自动恢复连接 |
-| 自定义协议 | ✅ | Magic、Version、Cmd、Seq、Body Length、Body、CRC32 |
-| 自定义协议 | ✅ | 客户端和服务端同源命令映射，当前支持 19 个业务命令和 ERROR |
-| 同步模型 | ✅ | `NEW_EVENT_NOTIFY -> SYNC -> SYNC_RESULT` 增量同步 |
-| 同步模型 | ✅ | `userSeq` 用户维度同步进度 |
-| 同步模型 | ✅ | `conversationSeq` 会话内最终排序 |
-| 同步模型 | ✅ | `clientSeq` 客户端本地发送顺序 |
-| 同步模型 | ✅ | EventProcessor 串行处理网络事件并写入 SQLite |
-| 同步模型 | ✅ | 先落库再推进 `lastUserSeq`，避免同步中断丢消息 |
-| 服务端 | ✅ | Netty WebSocket 服务端 |
-| 服务端 | ✅ | JDK HttpServer HTTP API |
-| 服务端 | ✅ | DataStore 内存状态管理 |
-| 服务端 | ✅ | MySQL 状态快照持久化 |
-| 服务端 | ✅ | 用户收件箱 InboxEvent、事件序号修复、同步结果分页 |
-| 服务端 | ✅ | MessageDeliveryService 收件人判定、在线通知、离线推送入队 |
-| 本地数据库 | ✅ | SQLite 多账号隔离 |
-| 本地数据库 | ✅ | 用户、好友、好友申请、会话、消息、群组、群成员、同步状态等本地表 |
-| 本地数据库 | ✅ | 会话置顶排序、消息分页查询、搜索查询 |
-| CI 与测试 | ✅ | GitHub Actions 自动运行单元测试和构建 |
-| CI 与测试 | ✅ | App 协议、命令、会话 ID、时间戳、聊天定位索引单元测试 |
-| CI 与测试 | ✅ | Server 协议、密码、DataStore、EventService、连接注册、消息投递单元测试 |
-| 工程化 | ✅ | `.gitignore` 排除启动脚本、本地数据库、截图录屏、密钥和调试产物 |
-| 工程化 | ✅ | `TESTING.md` 记录测试范围和 CI 流程 |
+| 类别 | 要求 | 项目使用情况 | 证据位置 |
+| --- | --- | --- | --- |
+| 语言 | Kotlin | 已使用。客户端和服务端业务代码均为 Kotlin。 | `app/src/main/java/com/lightchat/`、`server/src/main/kotlin/com/lightchat/server/` |
+| 长连接 | OkHttp WebSocket 或裸 Socket + 自写协议帧 | 已使用 OkHttp WebSocket，WebSocket payload 为自定义二进制协议帧。 | `app/src/main/java/com/lightchat/im/ConnectionManager.kt`、`app/src/main/java/com/lightchat/protocol/ProtocolCodec.kt` |
+| 数据库 | SQLiteOpenHelper（手写） | 已使用手写 SQLiteOpenHelper 和 DAO。 | `app/src/main/java/com/lightchat/data/local/DatabaseHelper.kt` |
+| 异步 | Coroutines + Flow + Channel | 已使用 Coroutines、StateFlow、SharedFlow；网络事件通过同步管理器和事件处理器串行落库。 | `app/src/main/java/com/lightchat/sync/`、`app/src/main/java/com/lightchat/event/AppEvents.kt` |
+| UI | Jetpack Compose | 已使用 Compose，未使用 XML 页面实现主要 UI。 | `app/src/main/java/com/lightchat/ui/` |
+| 抓包 | 必须使用 Charles/Wireshark 抓自己的协议包并提交截图 | 已使用 Wireshark 抓 WebSocket/TCP 包，确认端口 `8080` 上存在 WebSocket Binary Frame；截图属于答辩/验收材料，不提交到仓库。 | 详情见文件：抓包详情 |
 
-## 架构概览
+## 架构图
 
-```text
-Android UI (Compose)
-        ↓
-ViewModel + StateFlow
-        ↓
-Repository
-        ↓
-DAO + SQLite
-        ↓
-EventProcessor / SyncManager / ImClient
-        ↓
-OkHttp WebSocket + HTTP
-        ↓
-Netty WebSocket Server + HTTP API
-        ↓
-DataStore + EventService + MySQL snapshot
+```mermaid
+flowchart TD
+    UI["Android UI\nJetpack Compose"] --> VM["ViewModel + StateFlow"]
+    VM --> Repo["Repository"]
+    Repo --> SQLite["SQLite\nuser / friend / conversation / message / group / sync_state"]
+    VM --> Sync["SyncManager + EventProcessor\n串行处理网络事件"]
+    Sync --> IM["ImClient + ConnectionManager\nOkHttp WebSocket"]
+    Repo --> HTTP["AuthApiClient / MediaApiClient\nHTTP API"]
+    IM --> WS["Netty WebSocket Server\n自定义二进制协议"]
+    HTTP --> API["JDK HttpServer\n登录/资料/图片/Bootstrap"]
+    WS --> Service["CommandHandler\nMessageDeliveryService\nEventService"]
+    API --> Service
+    Service --> Store["DataStore\n运行时权威状态"]
+    Store --> MySQL["MySQL\nlightchat_state + 镜像表"]
+    API --> OSS["Aliyun OSS\n原图 + 缩略图"]
+    Service --> Push["Mock Push Gateway\nADB 显式广播"]
 ```
 
-客户端 UI 不直接依赖网络结果展示消息，消息、会话、用户和群组状态会先落到 SQLite，再由本地数据驱动页面刷新。服务端维护内存状态并通过 MySQL 保存状态快照。
+## 消息链路
+
+```mermaid
+sequenceDiagram
+    participant A as 发送端
+    participant S as 服务端
+    participant B as 接收端
+    participant DB as SQLite/MySQL
+
+    A->>A: 生成 messageId/clientSeq，本地插入 SENDING
+    A->>S: SEND_MESSAGE(WebSocket 二进制协议)
+    S->>DB: 分配 conversationSeq，保存 message
+    S->>DB: 为参与者写入 inbox_events(userSeq)
+    S-->>A: MESSAGE_ACK
+    S-->>B: NEW_EVENT_NOTIFY(latestUserSeq)
+    B->>S: SYNC(lastUserSeq)
+    S-->>B: SYNC_RESULT(events)
+    B->>DB: EventProcessor 串行落库
+    B->>S: MARK_READ(conversationSeq)
+    S->>DB: 更新 conversation_members.last_read_seq / message_receipts
+    S-->>A: READ_NOTIFY
+    A->>DB: 更新本地已读状态
+```
+
+关键原则：
+
+- `clientSeq` 管理客户端本地发送顺序，覆盖发送中、失败、重发等状态。
+- `conversationSeq` 由服务端分配，管理会话内最终顺序、分页锚点和已读进度。
+- `userSeq` 由服务端按用户维度分配，管理 Inbox 增量同步进度。
+- 客户端收到网络事件后由 `EventProcessor` 串行写库，先落库再推进 `lastUserSeq`。
 
 ## 自定义协议
 
-WebSocket 使用二进制包，包体是 UTF-8 JSON。
+WebSocket 使用自定义二进制包。协议字段全部使用 Java/Kotlin `ByteBuffer` 默认的大端序（Big Endian）写入；`body` 是 UTF-8 JSON 字节数组；`crc32` 对 `header + body` 计算，不包含尾部 CRC 自身。
 
 ```text
-┌──────────┬─────────┬────────┬────────┬──────────┬─────────┬────────┐
-│ Magic(2) │ Ver(1)  │ Cmd(1) │ Seq(8) │ Len(4)   │ Body(N) │ CRC(4) │
-│ 0x4C43   │ 1       │ byte   │ int64  │ int32    │ JSON    │ CRC32  │
-└──────────┴─────────┴────────┴────────┴──────────┴─────────┴────────┘
+总长度 = 16 字节 Header + N 字节 Body + 4 字节 CRC32
+
+┌──────────────┬──────────────┬──────────┬────────────┬────────────────────┐
+│ 偏移         │ 字段         │ 长度     │ 示例       │ 说明               │
+├──────────────┼──────────────┼──────────┼────────────┼────────────────────┤
+│ 0..1         │ magic        │ 2 bytes  │ 4C 43      │ 固定为 0x4C43，即 LC │
+│ 2            │ version      │ 1 byte   │ 01         │ 当前版本为 1       │
+│ 3            │ cmd          │ 1 byte   │ 0A         │ 命令号             │
+│ 4..11        │ seq          │ 8 bytes  │ 00..01     │ 请求序号 Long      │
+│ 12..15       │ bodyLength   │ 4 bytes  │ 00 00 00 N │ Body 字节长度 Int  │
+│ 16..15+N     │ body         │ N bytes  │ JSON       │ UTF-8 JSON         │
+│ 16+N..19+N   │ crc32        │ 4 bytes  │ xx xx xx xx│ CRC32(header+body) │
+└──────────────┴──────────────┴──────────┴────────────┴────────────────────┘
 ```
 
-当前命令号：
+最小包长度为 20 字节：16 字节 Header + 0 字节 Body + 4 字节 CRC32。心跳包就是这种无 Body 包。
 
-| Cmd | 名称 | 方向 |
-| --- | --- | --- |
-| 1 | AUTH | C -> S |
-| 2 | AUTH_ACK | S -> C |
-| 3 | HEARTBEAT | C -> S |
-| 4 | HEARTBEAT_ACK | S -> C |
-| 5 | NEW_EVENT_NOTIFY | S -> C |
-| 6 | SYNC | C -> S |
-| 7 | SYNC_RESULT | S -> C |
-| 8 | RECALL_MESSAGE | C -> S / S -> C ACK |
-| 9 | CREATE_GROUP | C -> S / S -> C ACK |
-| 10 | SEND_MESSAGE | C -> S |
-| 11 | MESSAGE_ACK | S -> C |
-| 12 | SEND_FRIEND_REQUEST | C -> S |
-| 13 | ACCEPT_FRIEND_REQUEST | C -> S |
-| 14 | MARK_READ | C -> S |
-| 15 | UPDATE_PROFILE | C -> S |
-| 16 | ADD_GROUP_MEMBERS | C -> S |
-| 17 | REJECT_FRIEND_REQUEST | C -> S |
-| 18 | READ_NOTIFY | S -> C |
-| 19 | UPDATE_CONVERSATION_SETTINGS | C -> S |
-| 99 | ERROR | S -> C |
-
-## 消息同步模型
-
-LightChat 采用类似 seqsvr 的用户维度增量同步：
+抓包时如果看到：
 
 ```text
-服务端生成 InboxEvent(userSeq)
-        ↓
-在线用户收到 NEW_EVENT_NOTIFY(latestUserSeq)
-        ↓
-客户端发现 latestUserSeq > localLastUserSeq
-        ↓
-客户端发送 SYNC(lastUserSeq)
-        ↓
-服务端返回 userSeq 更大的事件列表
-        ↓
-客户端 EventProcessor 串行处理事件并写入 SQLite
-        ↓
-落库成功后更新 lastUserSeq
+4C 43 01 03 ...
 ```
 
-关键原则是先落库，再推进 `lastUserSeq`。这样即使客户端处理过程中崩溃，下次仍可以从旧的 `lastUserSeq` 重新拉取，避免丢消息。
+含义是：
 
-## 三套序列号
+```text
+magic=0x4C43(LC), version=0x01, cmd=0x03(HEARTBEAT)
+```
 
-| 字段 | 生成方 | 作用 |
-| --- | --- | --- |
-| `clientSeq` | 客户端 | 标识本地发送顺序，用于发送中、失败、重发等本地状态管理。 |
-| `conversationSeq` | 服务端 | 标识同一会话内的消息顺序，用于最终展示排序和已读进度。 |
-| `userSeq` | 服务端 | 标识某个用户收件箱中的事件顺序，用于增量同步。 |
+命令号如下：
+
+| 十进制 | 十六进制 | 名称 | 说明 |
+| ---: | ---: | --- | --- |
+| 1 | `0x01` | `AUTH` | 客户端 WebSocket 鉴权 |
+| 2 | `0x02` | `AUTH_ACK` | 服务端鉴权成功响应 |
+| 3 | `0x03` | `HEARTBEAT` | 客户端心跳 |
+| 4 | `0x04` | `HEARTBEAT_ACK` | 服务端心跳响应 |
+| 5 | `0x05` | `NEW_EVENT_NOTIFY` | 服务端通知客户端有新事件 |
+| 6 | `0x06` | `SYNC` | 客户端按 `lastUserSeq` 拉取增量 |
+| 7 | `0x07` | `SYNC_RESULT` | 服务端返回增量事件 |
+| 8 | `0x08` | `RECALL_MESSAGE` | 撤回消息或撤回 ACK |
+| 9 | `0x09` | `CREATE_GROUP` | 创建群聊或创建 ACK |
+| 10 | `0x0A` | `SEND_MESSAGE` | 客户端发送消息 |
+| 11 | `0x0B` | `MESSAGE_ACK` | 服务端消息 ACK |
+| 12 | `0x0C` | `SEND_FRIEND_REQUEST` | 发送好友申请或 ACK |
+| 13 | `0x0D` | `ACCEPT_FRIEND_REQUEST` | 同意好友申请或 ACK |
+| 14 | `0x0E` | `MARK_READ` | 客户端上报已读或 ACK |
+| 15 | `0x0F` | `UPDATE_PROFILE` | 更新资料或 ACK |
+| 16 | `0x10` | `ADD_GROUP_MEMBERS` | 邀请群成员或 ACK |
+| 17 | `0x11` | `REJECT_FRIEND_REQUEST` | 拒绝好友申请或 ACK |
+| 18 | `0x12` | `READ_NOTIFY` | 服务端通知对方已读进度 |
+| 19 | `0x13` | `UPDATE_CONVERSATION_SETTINGS` | 更新置顶/免打扰等会话设置 |
+| 99 | `0x63` | `ERROR` | 服务端错误响应 |
+
+注意：CRC32 只用于发现包损坏，不等于加密。使用 `ws://` / `http://` 时，局域网抓包仍可能看到明文 JSON。生产环境应使用 HTTPS/WSS 和可信证书。
 
 ## 数据存储
 
-### Android SQLite
+Android 本地 SQLite 主要表：
 
-当前本地数据库版本为 `12`，主要表包括：
-
-- `user`
-- `friend`
-- `friend_request`
-- `conversation`
-- `message`
-- `im_group`
-- `group_member`
-- `sync_state`
-- `conversation_member`
-- `message_receipt`
-- `auth_session`
-
-### 服务端 MySQL
-
-服务端默认连接：
-
-```text
-jdbc:mysql://127.0.0.1:3307/lightchat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
-```
-
-服务端通过 `MySqlStatePersistence` 将完整状态快照保存到 MySQL。当前 GitHub 仓库不上传本机 MySQL 数据目录。
-
-可用环境变量：
-
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `MYSQL_URL` | `jdbc:mysql://127.0.0.1:3307/lightchat?...` | MySQL JDBC 地址 |
-| `MYSQL_USER` | `root` | MySQL 用户名 |
-| `MYSQL_PASSWORD` | 空 | MySQL 密码 |
-| `MYSQL_STATE_KEY` | `default` | 状态快照 key |
-
-## 媒体存储
-
-图片上传走 HTTP 接口，消息本身只通过 WebSocket 发送图片元信息。服务端当前支持阿里云 OSS。
-
-必填环境变量：
-
-| 变量 | 说明 |
+| 表 | 作用 |
 | --- | --- |
-| `MEDIA_STORAGE_PROVIDER` | 设为 `aliyun_oss`，也可省略，默认就是阿里云 OSS |
-| `ALIYUN_OSS_ACCESS_KEY_ID` | AccessKey ID |
-| `ALIYUN_OSS_ACCESS_KEY_SECRET` | AccessKey Secret |
-| `ALIYUN_OSS_BUCKET` | Bucket 名称 |
-| `ALIYUN_OSS_ENDPOINT` | 例如 `oss-cn-beijing.aliyuncs.com` |
+| `user` | 用户资料缓存，包含头像 URL/版本 |
+| `friend` | 好友关系缓存 |
+| `friend_request` | 好友申请缓存 |
+| `conversation` | 会话列表快照、最后消息、未读、置顶、免打扰 |
+| `conversation_member` | 每用户每会话状态，包含 `last_read_seq`、置顶、免打扰 |
+| `message` | 本地消息缓存，包含 `client_seq`、`conversation_seq`、`extra` |
+| `message_receipt` | 群聊回执预留/结构化存储 |
+| `im_group` / `group_member` | 群资料和群成员 |
+| `sync_state` | 用户维度同步游标 `lastUserSeq` |
+| `auth_session` | 本地登录态 |
 
-可选环境变量：
+服务端 MySQL 默认数据库为 `lightchat`。当前服务端以内存 `DataStore` 为运行时权威状态，通过 `lightchat_state` 快照和多张镜像表落地，便于重启恢复、Navicat 查询和后续迁移到纯关系型实现。核心服务端表包括 `users`、`credentials`、`conversations`、`conversation_members`、`messages`、`message_receipts`、`chat_groups`、`group_members`、`user_seq_counters`、`conversation_seq_counters`、`inbox_events`。
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `ALIYUN_OSS_KEY_PREFIX` | `lightchat` | 对象 key 前缀 |
-| `ALIYUN_OSS_PUBLIC_READ` | `true` | 是否直接返回公开 URL |
-| `ALIYUN_OSS_SIGNED_URL_SECONDS` | `3600` | 私有 Bucket 签名 URL 有效期 |
-| `ALIYUN_OSS_PUBLIC_BASE_URL` | 空 | 自定义域名或 CDN 域名 |
-
-接收端会先展示缩略图，进入全屏或后台拉取成功后再替换为原图。本地会缓存头像、缩略图和原图。
-
-## HTTP API
-
-服务端 HTTP 默认端口为 `8081`。
-
-| 路径 | 方法 | 说明 |
-| --- | --- | --- |
-| `/api/register` | POST | 注册 |
-| `/api/login` | POST | 登录 |
-| `/api/bootstrap` | GET | 登录后拉取用户基础数据 |
-| `/api/users/search` | GET | 搜索用户 |
-| `/api/users/profile` | GET | 拉取用户资料 |
-| `/api/images/upload` | POST | 上传原图和缩略图 |
-| `/api/images/refresh-url` | POST | 刷新私有 OSS 签名 URL |
-| `/api/mock-push/pending` | GET | 本地 mock 推送拉取待投递消息 |
-
-除注册、登录和 mock 推送接口外，其余接口需要 `Authorization: Bearer <token>`。
-
-## 本地运行
+## 运行指南
 
 ### 环境要求
 
 - JDK 17
-- Android Studio / Android SDK
-- MySQL 8.x
-- 阿里云 OSS Bucket 和 AccessKey
+- Android Studio / Android SDK / adb
+- MySQL 8.x，本地开发默认端口 `3307`
+- 阿里云 OSS Bucket 和 RAM AccessKey
+- Windows PowerShell 或等价终端
 
-### 1. 配置服务端环境变量
-
-PowerShell 示例：
+### 服务端环境变量
 
 ```powershell
 $env:SERVER_PORT="8080"
@@ -329,52 +203,51 @@ $env:ALIYUN_OSS_ACCESS_KEY_SECRET="你的 AccessKey Secret"
 $env:ALIYUN_OSS_BUCKET="你的 Bucket"
 $env:ALIYUN_OSS_ENDPOINT="oss-cn-beijing.aliyuncs.com"
 $env:ALIYUN_OSS_KEY_PREFIX="lightchat"
+$env:ALIYUN_OSS_PUBLIC_READ="false"
+$env:ALIYUN_OSS_SIGNED_URL_SECONDS="3600"
 ```
 
-### 2. 启动服务端
+本地 Mock 推送可选配置：
+
+```powershell
+$env:MOCK_PUSH_KEY="lightchat-local-mock"
+$env:MOCK_PUSH_ADB_PATH="adb"
+$env:MOCK_PUSH_ADB_DEVICES='{"123456":"EU9TXSGIX4MR55GM","777777":"emulator-5554","2133800438":"emulator-5556"}'
+```
+
+### 启动服务端
 
 ```powershell
 .\gradlew.bat :server:run
 ```
 
-默认服务：
+默认地址：
 
 ```text
 WebSocket: ws://<服务端IP>:8080/ws
 HTTP:      http://<服务端IP>:8081
+MySQL:     127.0.0.1:3307/lightchat
 ```
 
-### 3. 配置 Android 客户端服务地址
+### 配置客户端服务地址
 
-当前客户端服务地址写在代码里，需要按你的电脑局域网 IP 修改：
+当前客户端服务地址仍是代码常量，需要按电脑局域网 IP 修改：
 
-- HTTP: [AuthApiClient.kt](app/src/main/java/com/lightchat/data/remote/AuthApiClient.kt)
-- WebSocket: [ConnectionManager.kt](app/src/main/java/com/lightchat/im/ConnectionManager.kt)
+- `app/src/main/java/com/lightchat/data/remote/AuthApiClient.kt`
+- `app/src/main/java/com/lightchat/im/ConnectionManager.kt`
 
-示例：
+模拟器访问宿主机可使用模拟器网关地址；真机需要与电脑在同一局域网，并使用电脑真实局域网 IP。
 
-```kotlin
-const val DEFAULT_BASE_URL = "http://192.168.1.10:8081"
-const val DEFAULT_URL = "ws://192.168.1.10:8080/ws"
-```
-
-模拟器访问宿主机时可以使用 Android 模拟器网关地址；真机需要和电脑在同一网络下，并使用电脑的局域网 IP。
-
-### 4. 构建 APK
+### 构建和安装
 
 ```powershell
 .\gradlew.bat :app:assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-输出路径：
+### 测试和 CI
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-## 测试与 CI
-
-本地运行单元测试：
+本地单元测试：
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest :server:test
@@ -389,49 +262,80 @@ app/build/outputs/apk/debug/app-debug.apk
 GitHub Actions 会在 `push`、`pull_request` 和手动触发时执行：
 
 1. 配置 JDK 17 和 Android SDK。
-2. 运行 Android 与服务端单元测试。
+2. 运行 Android 与 Server 单元测试。
 3. 构建 Android debug APK 和服务端 installDist。
 
-测试范围详见 [TESTING.md](TESTING.md)。
+测试范围见 `TESTING.md`。
 
-## 离线通知说明
+## 功能勾选表
 
-当前项目没有接入真实厂商推送 SDK，而是提供了本地 Mock 厂商推送能力：
+| 模块 | 状态 | 功能 |
+| --- | --- | --- |
+| 账号体系 | ✅ | 注册、登录、自动登录、退出登录 |
+| 账号体系 | ✅ | JWT 鉴权、服务端会话校验、旧明文密码登录后升级为哈希 |
+| 个人资料 | ✅ | 昵称、头像、个性签名、地区编辑，已删除手机号字段 |
+| 个人资料 | ✅ | 头像 URL/版本同步，头像本地缓存优先显示 |
+| 好友 | ✅ | 搜索用户、发送申请、同意/拒绝申请、好友申请通知 |
+| 好友 | ✅ | 好友同意后自动建立单聊会话 |
+| 联系人 | ✅ | 联系人列表、联系人搜索、群聊入口、联系人页不展示签名 |
+| 会话列表 | ✅ | 单聊/群聊/系统会话展示 |
+| 会话列表 | ✅ | 置顶、免打扰、隐藏、删除、标记未读 |
+| 会话列表 | ✅ | 未读统计、免打扰红点、底部导航未读汇总排除免打扰会话 |
+| 会话列表 | ✅ | @我摘要，支持 `[有人@我]` 和多条数量展示 |
+| 新用户引导 | ✅ | 首次注册登录默认展示 LightChat 助手和欢迎消息 |
+| 单聊 | ✅ | 文本消息发送、接收、ACK、失败重发 |
+| 单聊 | ✅ | 发送失败消息保持排序，失败气泡可复制/删除 |
+| 单聊 | ✅ | 双方停留聊天详情页时已读状态即时更新 |
+| 群聊 | ✅ | 创建群聊、设置群名称、邀请成员、群成员列表 |
+| 群聊 | ✅ | 群系统提示“xxx邀请xxx加入了群聊” |
+| 群聊 | ✅ | 群聊已读人数 `x/y 已读` |
+| 群聊 | ✅ | @成员、@多人、@所有人、@我未读定位高亮 |
+| 群聊 | ✅ | @他人消息显示被 @ 人的已读/未读明细 |
+| 撤回 | ✅ | 2 分钟内撤回本人消息，撤回后可重新编辑 |
+| 撤回 | ✅ | 群聊别人撤回显示具体昵称，自己撤回保持原样 |
+| 长按菜单 | ✅ | 文字、emoji、图片、名片、合并转发气泡长按菜单 |
+| 长按菜单 | ✅ | 复制、转发、多选、撤回、删除按消息类型展示 |
+| 多选 | ✅ | 左侧选择框、取消按钮、批量删除、批量转发 |
+| 转发 | ✅ | 单条转发、多选逐条转发、多选合并转发 |
+| 转发 | ✅ | 图片、名片、合并转发消息均可转发 |
+| 合并转发 | ✅ | 详情页展示文本、图片、名片、嵌套聊天记录 |
+| 合并转发 | ✅ | 图片可点开全屏，详情页内多图可左右滑动 |
+| 名片 | ✅ | 推荐好友名片，收到方可点击查看资料和添加好友 |
+| 图片 | ✅ | 相册网格、多图选择、按选择顺序发送 |
+| 图片 | ✅ | 长按拖动多选，预览页选择状态保持 |
+| 图片 | ✅ | 预览页放大、上下左右拖动查看 |
+| 图片 | ✅ | 发送端显示原图，接收端先缩略图后原图 |
+| 图片 | ✅ | 全屏从聊天气泡放大进入，退出缩回气泡位置 |
+| 图片 | ✅ | 全屏左右切换，切到哪张自动拉取哪张原图 |
+| 图片 | ✅ | 下载到系统相册 |
+| 媒体存储 | ✅ | 阿里云 OSS 上传原图和缩略图 |
+| 媒体存储 | ✅ | 私有 Bucket 签名 URL 过期刷新 |
+| 媒体存储 | ✅ | 图片、缩略图、头像优先加载本地缓存 |
+| 搜索 | ✅ | 首页全局搜索联系人和聊天记录 |
+| 搜索 | ✅ | 单聊/群聊详情内搜索聊天记录 |
+| 搜索 | ✅ | 搜索结果进入目标消息并居中高亮 3 秒 |
+| 搜索 | ✅ | 图片路径不参与聊天记录搜索 |
+| 分页性能 | ✅ | 会话列表分页和预取 |
+| 分页性能 | ✅ | 聊天记录双向分页，支持 1 万条消息中间定位 |
+| 通知 | ✅ | 前台/后台通知、好友申请通知、群聊通知显示群名 |
+| Mock 离线推送 | ✅ | WebSocket 断开后按用户 ID 路由到 ADB 设备并展示通知 |
+| 长连接 | ✅ | WebSocket AUTH、心跳、指数退避重连、网络恢复重连 |
+| 同步 | ✅ | Bootstrap 全量同步、Inbox 增量同步、`lastUserSeq` 游标 |
+| 协议 | ✅ | 客户端和服务端同源自定义协议编解码 |
+| 工程化 | ✅ | `.gitignore`、GitHub Actions、单元测试、测试文档 |
 
-- 服务端发现用户 WebSocket 不在线时，将消息写入 mock push 队列。
-- 本地开发环境可以通过 ADB 显式广播投递给 Android。
-- `MockVendorPushReceiver` 收到广播后展示系统通知，并支持从通知进入对应会话。
+## 性能优化摘要
 
-相关环境变量：
-
-| 变量 | 说明 |
-| --- | --- |
-| `MOCK_PUSH_KEY` | 拉取 mock 推送队列的密钥，默认 `lightchat-local-mock` |
-| `MOCK_PUSH_ADB_PATH` | adb 路径，默认 `adb` |
-| `MOCK_PUSH_ADB_DEVICES` | 用户 ID 到设备序列号的映射 |
-| `MOCK_PUSH_ADB_ALL` | 没有单独映射时广播到的设备列表 |
-
-正式线上环境应接入 FCM、华为、小米、OPPO、vivo 等厂商推送 SDK，由 Android 上报 push token，服务端调用厂商 API 投递通知。
-
-## 安全说明
-
-- WebSocket 自定义协议当前只做结构校验和 CRC32，不等于加密。
-- 如果使用 `ws://` 和 `http://`，局域网抓包可以看到明文 JSON body。
-- 生产环境应使用 HTTPS/WSS，并配置可信证书。
-- AccessKey、MySQL 密码、JWT Secret 不能提交到仓库。
-- README 中的变量名只用于说明，真实密钥应通过环境变量或密钥管理服务配置。
+- 开屏：核心组件懒初始化，避免启动时同步下载图片缩略图。
+- 会话列表：分页加载 80 条，距底部 25 条预取，刷新防抖，批量查用户信息。
+- 聊天列表：双向分页 80 条，使用 `conversationSeq` 做 cursor，保持滚动锚点。
+- 图片：渐进式加载，本地缓存优先；缩略图约 200px、JPEG 60%；大图解码按 2 的幂次方计算 `inSampleSize`。
+- 相册：缩略图后台加载，LruCache 复用，避免打开动画阶段读取整张原图。
+- 网络：20 秒心跳，重连指数退避，2 秒 ACK 超时标记失败。
 
 ## 当前限制
 
-- 客户端服务地址仍是编译期常量，尚未抽成 BuildConfig 或运行时配置。
-- 服务端状态以 MySQL 快照方式保存，尚未拆成完整关系型业务表写入模型。
-- Mock 厂商推送只适合本地调试，不代表真实离线推送能力。
-- UI 自动化测试尚未接入，当前 CI 主要覆盖纯 JVM 单元测试和构建。
-- 图片存储当前只支持阿里云 OSS。
-
-## 贡献与开发建议
-
-- 业务代码修改后先运行 `:app:testDebugUnitTest` 和 `:server:test`。
-- 涉及协议命令时，同时修改客户端和服务端的 `Cmd`、`ProtocolCodec` 和相关测试。
-- 涉及消息同步时，优先保证“落库成功后再推进 `lastUserSeq`”。
-- 涉及图片或头像时，保留本地缓存优先策略，避免列表反复网络加载。
+- 生产级杀进程离线推送仍需接入 FCM 或厂商 SDK；当前 Mock Push 只用于本地三台设备调试。
+- 客户端服务地址仍是代码常量，后续可迁移到 BuildConfig 或运行时配置页。
+- 服务端 MySQL 当前为快照/镜像混合模式，后续可演进为纯关系型业务写入模型。
+- UI 自动化测试尚未纳入 CI，当前 CI 主要覆盖 JVM 单元测试和构建。
