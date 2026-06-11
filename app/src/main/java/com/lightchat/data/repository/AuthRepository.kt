@@ -59,18 +59,20 @@ class AuthRepository(
     fun getCurrentUserId(): String? = userSession.currentUserId
 
     private fun saveAuthenticatedUser(token: String, user: User) {
-        userDao.insert(user)
-        tokenManager.saveToken(token)
         userSession.currentUserId = user.userId
         userSession.currentNickname = user.nickname
+        tokenManager.saveToken(token)
+        userDao.insert(user)
         if (needsBootstrap()) {
             runCatching { cacheBootstrap(token) }
         }
     }
 
     private fun needsBootstrap(): Boolean {
-        val lastUserSeq = LightChatApplication.instance.syncStateDao.getLastUserSeq()
-        return lastUserSeq <= 0L
+        val app = LightChatApplication.instance
+        val lastUserSeq = app.syncStateDao.getLastUserSeq()
+        val visibleConversationCount = app.conversationDao.getVisibleCount()
+        return lastUserSeq <= 0L || visibleConversationCount == 0
     }
 
     private fun cacheBootstrap(token: String) {

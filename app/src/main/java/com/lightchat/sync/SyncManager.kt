@@ -134,7 +134,11 @@ class SyncManager(
     }
 
     fun requestSync() {
-        val seq = app.syncStateDao.getLastUserSeq()
+        val seq = if (app.conversationDao.getVisibleCount() == 0) {
+            0L
+        } else {
+            app.syncStateDao.getLastUserSeq()
+        }
         triggerSync(seq)
     }
 

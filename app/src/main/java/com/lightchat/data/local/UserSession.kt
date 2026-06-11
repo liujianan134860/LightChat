@@ -9,16 +9,20 @@ class UserSession(context: Context) {
 
     var currentUserId: String?
         get() = prefs.getString(KEY_USER_ID, null)
-        set(value) = prefs.edit().putString(KEY_USER_ID, value).apply()
+        set(value) {
+            prefs.edit().putString(KEY_USER_ID, value).commit()
+        }
 
     var currentNickname: String?
         get() = prefs.getString(KEY_NICKNAME, null)
-        set(value) = prefs.edit().putString(KEY_NICKNAME, value).apply()
+        set(value) {
+            prefs.edit().putString(KEY_NICKNAME, value).commit()
+        }
 
     fun isLoggedIn(): Boolean = currentUserId != null
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
     }
 
     companion object {
