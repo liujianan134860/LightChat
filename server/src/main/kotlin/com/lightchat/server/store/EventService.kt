@@ -52,10 +52,6 @@ class EventService(private val dataStore: DataStore) {
         return userSeqCounters[userId]?.get() ?: 0L
     }
 
-    fun getInboxSize(userId: String): Int {
-        return inboxes[userId]?.size ?: 0
-    }
-
     fun appendEvent(userId: String, event: InboxEvent) {
         inboxes.computeIfAbsent(userId) { ConcurrentLinkedDeque() }.add(event)
         dataStore.onChanged?.invoke()

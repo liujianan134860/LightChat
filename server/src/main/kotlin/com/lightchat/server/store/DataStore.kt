@@ -251,7 +251,6 @@ class DataStore {
         val visibleMessages = messages.values
             .filter { it.conversationId in visibleConversationIds }
             .sortedByDescending { it.createTime }
-            .take(200)
 
         return JSONObject().apply {
             put("users", JSONArray().apply {

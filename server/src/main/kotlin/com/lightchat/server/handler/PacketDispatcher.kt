@@ -178,8 +178,6 @@ class PacketDispatcher(
 
             val allEvents = eventService.getEventsSince(userId, lastUserSeq)
             val deduped = dedupReadEvents(allEvents)
-            val inboxSize = eventService.getInboxSize(userId)
-            val latestUserSeq = eventService.getLatestUserSeq(userId)
 
             val maxPerSync = 100
             val hasMore = deduped.size > maxPerSync
@@ -188,11 +186,7 @@ class PacketDispatcher(
 
             val eventsJson = eventService.buildSyncResultJson(page, hasMore, nextUserSeq)
             conn.send(codec.encodeSyncResult(eventsJson, packet.seq))
-            println(
-                "[SYNC] user=$userId requestLastSeq=$lastUserSeq latestSeq=$latestUserSeq " +
-                    "inboxSize=$inboxSize rawPending=${allEvents.size} dedupedPending=${deduped.size} " +
-                    "returned=${page.size} hasMore=$hasMore nextSeq=$nextUserSeq packetSeq=${packet.seq}"
-            )
+            println("[SYNC] $userId: lastUserSeq=$lastUserSeq, total=${deduped.size}, returned=${page.size}, hasMore=$hasMore")
         } catch (e: Exception) {
             sendError(conn, 500, "Sync failed: ${e.message}", packet.seq)
         }
