@@ -12,18 +12,243 @@ LightChat 是一个面向 IM 核心链路实践的 Android 即时通讯项目。
 
 ```text
 LightChat/
-├── app/                    # Android 客户端：Compose UI、SQLite、WebSocket、同步、通知
-├── server/                 # Kotlin/JVM 服务端：Netty WS、HTTP API、DataStore、MySQL、OSS
-├── .github/workflows/      # GitHub Actions CI
-├── gradle/                 # Gradle Wrapper
-├── README.md               # 架构图、运行指南、功能勾选表
-├── TESTING.md              # 测试范围和运行方式
-├── 双端数据库表设计说明.md # Android SQLite 与服务端 MySQL 表结构
-├── 性能优化说明.md         # 启动、列表、图片、同步等性能优化记录
-├── 问题修复与测试记录.md   # 主要问题、修复过程和验证记录
-├── AI_USAGE.md             # AI 辅助方案采纳记录
-├── DECISIONS.md            # ADR 架构决策记录
-└── BUGFIX.md               # 真实踩坑、排查过程和根因
+|-- .github
+|   `-- workflows
+|       `-- ci.yml
+|-- .gitignore
+|-- AI_USAGE.md
+|-- app
+|   |-- build.gradle.kts
+|   |-- proguard-rules.pro
+|   `-- src
+|       |-- main
+|       |   |-- AndroidManifest.xml
+|       |   |-- java
+|       |   |   `-- com
+|       |   |       `-- lightchat
+|       |   |           |-- data
+|       |   |           |   |-- local
+|       |   |           |   |   |-- dao
+|       |   |           |   |   |   |-- ConversationDao.kt
+|       |   |           |   |   |   |-- FriendRequestDao.kt
+|       |   |           |   |   |   |-- GroupDao.kt
+|       |   |           |   |   |   |-- MessageDao.kt
+|       |   |           |   |   |   |-- SyncStateDao.kt
+|       |   |           |   |   |   `-- UserDao.kt
+|       |   |           |   |   |-- DatabaseHelper.kt
+|       |   |           |   |   |-- DatabaseSeeder.kt
+|       |   |           |   |   |-- TokenManager.kt
+|       |   |           |   |   `-- UserSession.kt
+|       |   |           |   |-- remote
+|       |   |           |   |   `-- AuthApiClient.kt
+|       |   |           |   `-- repository
+|       |   |           |       |-- AuthRepository.kt
+|       |   |           |       |-- ConversationRepository.kt
+|       |   |           |       |-- MessageRepository.kt
+|       |   |           |       `-- UserRepository.kt
+|       |   |           |-- event
+|       |   |           |   `-- AppEvents.kt
+|       |   |           |-- im
+|       |   |           |   |-- ConnectionManager.kt
+|       |   |           |   |-- ConnectionState.kt
+|       |   |           |   |-- HeartbeatManager.kt
+|       |   |           |   |-- ImClient.kt
+|       |   |           |   |-- ImForegroundService.kt
+|       |   |           |   `-- ReconnectManager.kt
+|       |   |           |-- LightChatApplication.kt
+|       |   |           |-- MainActivity.kt
+|       |   |           |-- MainContent.kt
+|       |   |           |-- model
+|       |   |           |   |-- Conversation.kt
+|       |   |           |   |-- ConversationId.kt
+|       |   |           |   |-- FriendRequest.kt
+|       |   |           |   |-- GroupMember.kt
+|       |   |           |   |-- ImGroup.kt
+|       |   |           |   |-- Message.kt
+|       |   |           |   `-- User.kt
+|       |   |           |-- notification
+|       |   |           |   |-- MockVendorPushReceiver.kt
+|       |   |           |   `-- NotificationHelper.kt
+|       |   |           |-- protocol
+|       |   |           |   |-- Cmd.kt
+|       |   |           |   |-- Packet.kt
+|       |   |           |   `-- ProtocolCodec.kt
+|       |   |           |-- sync
+|       |   |           |   |-- EventProcessor.kt
+|       |   |           |   |-- EventType.kt
+|       |   |           |   |-- SyncEvent.kt
+|       |   |           |   `-- SyncManager.kt
+|       |   |           |-- ui
+|       |   |           |   |-- chat
+|       |   |           |   |   |-- ChatInputBar.kt
+|       |   |           |   |   |-- ChatMentionDialog.kt
+|       |   |           |   |   |-- ChatMessageBubble.kt
+|       |   |           |   |   |-- ChatMessageList.kt
+|       |   |           |   |   |-- ChatMessageTime.kt
+|       |   |           |   |   |-- ChatScreen.kt
+|       |   |           |   |   |-- ChatScreenComponents.kt
+|       |   |           |   |   |-- ChatScreenDialogs.kt
+|       |   |           |   |   |-- ChatScrollController.kt
+|       |   |           |   |   |-- ImageDoodleCanvas.kt
+|       |   |           |   |   |-- ImageEditScreen.kt
+|       |   |           |   |   |-- ImageGesture.kt
+|       |   |           |   |   |-- ImageUtils.kt
+|       |   |           |   |   |-- ImageViewerScreen.kt
+|       |   |           |   |   |-- PhotoDetailScreen.kt
+|       |   |           |   |   |-- PhotoEditScreen.kt
+|       |   |           |   |   |-- PhotoPickerScreen.kt
+|       |   |           |   |   `-- PictureCacheManager.kt
+|       |   |           |   |-- components
+|       |   |           |   |   |-- AvatarCacheLoader.kt
+|       |   |           |   |   `-- LightChatAvatar.kt
+|       |   |           |   |-- contact
+|       |   |           |   |   `-- ContactScreen.kt
+|       |   |           |   |-- conversation
+|       |   |           |   |   `-- ConversationListScreen.kt
+|       |   |           |   |-- forward
+|       |   |           |   |   |-- ForwardPreviewScreen.kt
+|       |   |           |   |   |-- ForwardSelectScreen.kt
+|       |   |           |   |   `-- MergeForwardDetailScreen.kt
+|       |   |           |   |-- friend
+|       |   |           |   |   |-- AddFriendScreen.kt
+|       |   |           |   |   `-- FriendRequestScreen.kt
+|       |   |           |   |-- group
+|       |   |           |   |   |-- GroupCreateScreen.kt
+|       |   |           |   |   |-- GroupInviteScreen.kt
+|       |   |           |   |   |-- GroupListScreen.kt
+|       |   |           |   |   `-- GroupMemberListScreen.kt
+|       |   |           |   |-- login
+|       |   |           |   |   `-- LoginScreen.kt
+|       |   |           |   |-- main
+|       |   |           |   |   `-- MainScreen.kt
+|       |   |           |   |-- navigation
+|       |   |           |   |   `-- NavGraph.kt
+|       |   |           |   |-- profile
+|       |   |           |   |   |-- ProfileScreen.kt
+|       |   |           |   |   `-- UserCardShareScreen.kt
+|       |   |           |   |-- search
+|       |   |           |   |   |-- ChatSearchScreen.kt
+|       |   |           |   |   `-- SearchScreen.kt
+|       |   |           |   `-- theme
+|       |   |           |       |-- Color.kt
+|       |   |           |       |-- Theme.kt
+|       |   |           |       `-- Type.kt
+|       |   |           |-- util
+|       |   |           |   `-- ToastExt.kt
+|       |   |           `-- viewmodel
+|       |   |               |-- ChatViewModel.kt
+|       |   |               |-- ContactViewModel.kt
+|       |   |               |-- ConversationListViewModel.kt
+|       |   |               |-- GroupCreateViewModel.kt
+|       |   |               `-- LoginViewModel.kt
+|       |   `-- res
+|       |       |-- drawable
+|       |       |   `-- ic_launcher_foreground.xml
+|       |       |-- mipmap-hdpi
+|       |       |   |-- ic_launcher.png
+|       |       |   `-- ic_launcher_round.png
+|       |       |-- mipmap-mdpi
+|       |       |   |-- ic_launcher.png
+|       |       |   `-- ic_launcher_round.png
+|       |       |-- mipmap-xhdpi
+|       |       |   |-- ic_launcher.png
+|       |       |   `-- ic_launcher_round.png
+|       |       |-- mipmap-xxhdpi
+|       |       |   |-- ic_launcher.png
+|       |       |   `-- ic_launcher_round.png
+|       |       |-- mipmap-xxxhdpi
+|       |       |   |-- ic_launcher.png
+|       |       |   `-- ic_launcher_round.png
+|       |       `-- values
+|       |           |-- colors.xml
+|       |           |-- strings.xml
+|       |           `-- themes.xml
+|       `-- test
+|           `-- java
+|               `-- com
+|                   `-- lightchat
+|                       |-- model
+|                       |   `-- ConversationIdTest.kt
+|                       |-- protocol
+|                       |   |-- CmdTest.kt
+|                       |   `-- ProtocolCodecTest.kt
+|                       `-- ui
+|                           `-- chat
+|                               |-- ChatMessageTimeTest.kt
+|                               `-- ChatScrollControllerTest.kt
+|-- BUGFIX.md
+|-- build.gradle.kts
+|-- DECISIONS.md
+|-- gradle
+|   `-- wrapper
+|       |-- gradle-wrapper.jar
+|       `-- gradle-wrapper.properties
+|-- gradle.properties
+|-- gradlew
+|-- gradlew.bat
+|-- README.md
+|-- server
+|   |-- build.gradle.kts
+|   `-- src
+|       |-- main
+|       |   `-- kotlin
+|       |       `-- com
+|       |           `-- lightchat
+|       |               `-- server
+|       |                   |-- handler
+|       |                   |   |-- MessageDeliveryService.kt
+|       |                   |   `-- PacketDispatcher.kt
+|       |                   |-- http
+|       |                   |   `-- AuthHttpServer.kt
+|       |                   |-- Main.kt
+|       |                   |-- media
+|       |                   |   |-- AliyunOssMediaStorage.kt
+|       |                   |   `-- MediaStorage.kt
+|       |                   |-- model
+|       |                   |   |-- InboxEvent.kt
+|       |                   |   |-- ServerConversation.kt
+|       |                   |   |-- ServerGroup.kt
+|       |                   |   |-- ServerMessage.kt
+|       |                   |   `-- ServerUser.kt
+|       |                   |-- netty
+|       |                   |   |-- NettyClientConnection.kt
+|       |                   |   `-- NettyLightChatWebSocketServer.kt
+|       |                   |-- protocol
+|       |                   |   |-- Cmd.kt
+|       |                   |   |-- Packet.kt
+|       |                   |   `-- ProtocolCodec.kt
+|       |                   |-- push
+|       |                   |   `-- MockVendorPushGateway.kt
+|       |                   |-- security
+|       |                   |   |-- JwtService.kt
+|       |                   |   `-- PasswordHasher.kt
+|       |                   |-- session
+|       |                   |   |-- ClientConnection.kt
+|       |                   |   `-- ConnectionRegistry.kt
+|       |                   `-- store
+|       |                       |-- DataStore.kt
+|       |                       |-- EventService.kt
+|       |                       |-- MySqlStatePersistence.kt
+|       |                       `-- StatePersistence.kt
+|       `-- test
+|           `-- kotlin
+|               `-- com
+|                   `-- lightchat
+|                       `-- server
+|                           |-- handler
+|                           |   `-- MessageDeliveryServiceTest.kt
+|                           |-- protocol
+|                           |   `-- ProtocolCodecTest.kt
+|                           |-- security
+|                           |   `-- PasswordHasherTest.kt
+|                           |-- session
+|                           |   `-- ConnectionRegistryTest.kt
+|                           `-- store
+|                               |-- DataStoreTest.kt
+|                               `-- EventServiceTest.kt
+|-- settings.gradle.kts
+|-- TESTING.md
+`-- 双端数据库表设计说明.md
 ```
 
 ## 项目文档
