@@ -121,9 +121,7 @@ fun LightChatNavGraph(
         launch {
             AppEvents.openFriendRequests.collect {
                 if (LightChatApplication.instance.authRepository.isLoggedIn()) {
-                    navController.navigate(Routes.FRIEND_REQUESTS) {
-                        launchSingleTop = true
-                    }
+                    navController.navigate(Routes.FRIEND_REQUESTS)
                 }
             }
         }
@@ -131,9 +129,7 @@ fun LightChatNavGraph(
 
     LaunchedEffect(initialOpenFriendRequests, startDestination) {
         if (initialOpenFriendRequests && startDestination != Routes.LOGIN) {
-            navController.navigate(Routes.FRIEND_REQUESTS) {
-                launchSingleTop = true
-            }
+            navController.navigate(Routes.FRIEND_REQUESTS)
         }
     }
 
