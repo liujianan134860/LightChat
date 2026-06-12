@@ -9,23 +9,11 @@ import java.sql.PreparedStatement
 class MySqlStatePersistence(
     private val jdbcUrl: String,
     private val user: String,
-    private val password: String,
-    private val stateKey: String = "default"
+    private val password: String
 ) : StatePersistence {
     init {
         Class.forName("com.mysql.cj.jdbc.Driver")
         connection().use { conn ->
-            conn.createStatement().use { statement ->
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS lightchat_state (
-                        state_key VARCHAR(64) PRIMARY KEY,
-                        state_json LONGTEXT NOT NULL,
-                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                    """.trimIndent()
-                )
-            }
             createMirrorTables(conn)
         }
     }
@@ -40,7 +28,6 @@ class MySqlStatePersistence(
         connection().use { conn ->
             conn.autoCommit = false
             try {
-                saveSnapshot(conn, root)
                 refreshMirrorTables(conn, root)
                 conn.commit()
             } catch (e: Exception) {
@@ -52,21 +39,8 @@ class MySqlStatePersistence(
         }
     }
 
-    override fun describe(): String = "$jdbcUrl key=$stateKey"
+    override fun describe(): String = jdbcUrl
 
-    private fun saveSnapshot(conn: Connection, root: JSONObject) {
-        conn.prepareStatement(
-            """
-            INSERT INTO lightchat_state (state_key, state_json)
-            VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE state_json = VALUES(state_json)
-            """.trimIndent()
-        ).use { stmt ->
-            stmt.setString(1, stateKey)
-            stmt.setString(2, root.toString())
-            stmt.executeUpdate()
-        }
-    }
 
     private fun createMirrorTables(conn: Connection) {
         conn.createStatement().use { statement ->
@@ -573,28 +547,12 @@ class MySqlStatePersistence(
 
     private fun refreshMirrorTables(conn: Connection, root: JSONObject) {
         conn.createStatement().use { statement ->
-            listOf(
-                "inbox_events",
-                "conversation_seq_counters",
-                "user_seq_counters",
-                "friend_requests",
-                "group_members",
-                "chat_groups",
-                "messages",
-                "message_receipts",
-                "conversation_members",
-                "conversation_participants",
-                "conversations",
-                "friendships",
-                "auth_sessions",
-                "credentials",
-                "users"
-            ).forEach { table -> statement.executeUpdate("DELETE FROM $table") }
+            statement.executeUpdate("DELETE FROM friend_requests")
         }
 
         root.optJSONArray("users")?.let { users ->
             conn.prepareStatement(
-                "INSERT INTO users (user_id, nickname, avatar, avatar_url, avatar_version, signature, region, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO users (user_id, nickname, avatar, avatar_url, avatar_version, signature, region, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), avatar=VALUES(avatar), avatar_url=VALUES(avatar_url), avatar_version=VALUES(avatar_version), signature=VALUES(signature), region=VALUES(region), created_at=VALUES(created_at)"
             ).use { stmt ->
                 for (i in 0 until users.length()) {
                     val obj = users.getJSONObject(i)
@@ -613,7 +571,7 @@ class MySqlStatePersistence(
         }
 
         root.optJSONObject("credentials")?.let { credentials ->
-            conn.prepareStatement("INSERT INTO credentials (user_id, password) VALUES (?, ?)").use { stmt ->
+            conn.prepareStatement("INSERT INTO credentials (user_id, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password=VALUES(password)").use { stmt ->
                 credentials.keys().forEach { userId ->
                     stmt.setString(1, userId)
                     stmt.setString(2, credentials.optString(userId, ""))
@@ -629,6 +587,10 @@ class MySqlStatePersistence(
                 INSERT INTO auth_sessions (
                     token_id, user_id, issued_at, expires_at, revoked_at, device_name, client_ip, last_seen_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    user_id=VALUES(user_id), issued_at=VALUES(issued_at), expires_at=VALUES(expires_at),
+                    revoked_at=VALUES(revoked_at), device_name=VALUES(device_name), client_ip=VALUES(client_ip),
+                    last_seen_at=VALUES(last_seen_at)
                 """.trimIndent()
             ).use { stmt ->
                 for (i in 0 until sessions.length()) {
@@ -648,7 +610,7 @@ class MySqlStatePersistence(
         }
 
         root.optJSONObject("friendships")?.let { friendships ->
-            conn.prepareStatement("INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)").use { stmt ->
+            conn.prepareStatement("INSERT INTO friendships (user_id, friend_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id)").use { stmt ->
                 friendships.keys().forEach { userId ->
                     val arr = friendships.optJSONArray(userId)
                     if (arr != null) {
@@ -665,10 +627,10 @@ class MySqlStatePersistence(
 
         root.optJSONArray("conversations")?.let { conversations ->
             conn.prepareStatement(
-                "INSERT INTO conversations (conversation_id, type, group_id, created_at) VALUES (?, ?, ?, ?)"
+                "INSERT INTO conversations (conversation_id, type, group_id, created_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE type=VALUES(type), group_id=VALUES(group_id), created_at=VALUES(created_at)"
             ).use { convStmt ->
                 conn.prepareStatement(
-                    "INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?)"
+                    "INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE conversation_id=VALUES(conversation_id)"
                 ).use { participantStmt ->
                     for (i in 0 until conversations.length()) {
                         val obj = conversations.getJSONObject(i)
@@ -701,6 +663,12 @@ class MySqlStatePersistence(
                     message_id, conversation_id, sender_id, receiver_id, group_id,
                     message_type, content, extra, client_seq, conversation_seq, send_time, create_time
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    conversation_id=VALUES(conversation_id), sender_id=VALUES(sender_id),
+                    receiver_id=VALUES(receiver_id), group_id=VALUES(group_id),
+                    message_type=VALUES(message_type), content=VALUES(content), extra=VALUES(extra),
+                    client_seq=VALUES(client_seq), conversation_seq=VALUES(conversation_seq),
+                    send_time=VALUES(send_time), create_time=VALUES(create_time)
                 """.trimIndent()
             ).use { stmt ->
                 for (i in 0 until messages.length()) {
@@ -727,10 +695,10 @@ class MySqlStatePersistence(
 
         root.optJSONArray("groups")?.let { groups ->
             conn.prepareStatement(
-                "INSERT INTO chat_groups (group_id, group_name, owner_id, created_at) VALUES (?, ?, ?, ?)"
+                "INSERT INTO chat_groups (group_id, group_name, owner_id, created_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), owner_id=VALUES(owner_id), created_at=VALUES(created_at)"
             ).use { groupStmt ->
                 conn.prepareStatement(
-                    "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)"
+                    "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE role=VALUES(role)"
                 ).use { memberStmt ->
                     for (i in 0 until groups.length()) {
                         val obj = groups.getJSONObject(i)
@@ -783,7 +751,7 @@ class MySqlStatePersistence(
 
         root.optJSONObject("events")?.let { events ->
             events.optJSONObject("userSeqCounters")?.let { counters ->
-                conn.prepareStatement("INSERT INTO user_seq_counters (user_id, latest_user_seq) VALUES (?, ?)").use { stmt ->
+                conn.prepareStatement("INSERT INTO user_seq_counters (user_id, latest_user_seq) VALUES (?, ?) ON DUPLICATE KEY UPDATE latest_user_seq=VALUES(latest_user_seq)").use { stmt ->
                     counters.keys().forEach { userId ->
                         stmt.setString(1, userId)
                         stmt.setLong(2, counters.optLong(userId, 0))
@@ -794,7 +762,7 @@ class MySqlStatePersistence(
             }
             events.optJSONObject("convSeqCounters")?.let { counters ->
                 conn.prepareStatement(
-                    "INSERT INTO conversation_seq_counters (conversation_id, latest_conversation_seq) VALUES (?, ?)"
+                    "INSERT INTO conversation_seq_counters (conversation_id, latest_conversation_seq) VALUES (?, ?) ON DUPLICATE KEY UPDATE latest_conversation_seq=VALUES(latest_conversation_seq)"
                 ).use { stmt ->
                     counters.keys().forEach { conversationId ->
                         stmt.setString(1, conversationId)
@@ -809,6 +777,7 @@ class MySqlStatePersistence(
                     """
                     INSERT INTO inbox_events (owner_user_id, user_seq, event_type, payload, created_at)
                     VALUES (?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE event_type=VALUES(event_type), payload=VALUES(payload), created_at=VALUES(created_at)
                     """.trimIndent()
                 ).use { stmt ->
                     inboxes.keys().forEach { ownerUserId ->
@@ -897,6 +866,13 @@ class MySqlStatePersistence(
                     last_read_seq, last_delivered_seq, unread_count, mention_count,
                     is_pinned, pinned_time, mute_until, is_hidden, last_seen_time, joined_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    display_name_cache=VALUES(display_name_cache), role=VALUES(role),
+                    last_read_seq=VALUES(last_read_seq), last_delivered_seq=VALUES(last_delivered_seq),
+                    unread_count=VALUES(unread_count), mention_count=VALUES(mention_count),
+                    is_pinned=VALUES(is_pinned), pinned_time=VALUES(pinned_time),
+                    mute_until=VALUES(mute_until), is_hidden=VALUES(is_hidden),
+                    last_seen_time=VALUES(last_seen_time), joined_at=VALUES(joined_at)
                 """.trimIndent()
             ).use { memberStmt ->
                 for (i in 0 until conversations.length()) {
@@ -949,6 +925,9 @@ class MySqlStatePersistence(
                 message_id, conversation_id, user_id, receipt_type,
                 conversation_seq, event_user_seq, receipt_time
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                conversation_id=VALUES(conversation_id), conversation_seq=VALUES(conversation_seq),
+                event_user_seq=VALUES(event_user_seq), receipt_time=VALUES(receipt_time)
             """.trimIndent()
         ).use { receiptStmt ->
             readStates.forEach { (key, state) ->

@@ -103,6 +103,5 @@ private fun createPersistence(): StatePersistence {
         ?: "jdbc:mysql://127.0.0.1:3307/lightchat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true"
     val user = System.getenv("MYSQL_USER") ?: "root"
     val password = System.getenv("MYSQL_PASSWORD") ?: ""
-    val stateKey = System.getenv("MYSQL_STATE_KEY") ?: "default"
-    return MySqlStatePersistence(jdbcUrl, user, password, stateKey)
+    return MySqlStatePersistence(jdbcUrl, user, password)
 }

@@ -228,7 +228,7 @@ LightChat/  # 项目根目录
 |       |                   `-- store  # 状态存储和同步事件目录
 |       |                       |-- DataStore.kt  # 服务端运行时内存状态存储
 |       |                       |-- EventService.kt  # 服务端 userSeq/conversationSeq 和 Inbox 事件服务
-|       |                       |-- MySqlStatePersistence.kt  # MySQL 快照与镜像表持久化实现
+|       |                       |-- MySqlStatePersistence.kt  # MySQL 结构化表持久化实现
 |       |                       `-- StatePersistence.kt  # 服务端状态持久化接口
 |       `-- test  # 服务端测试源码集
 |           `-- kotlin  # 服务端 Kotlin 测试根目录
@@ -271,7 +271,7 @@ LightChat/  # 项目根目录
 | 客户端存储 | SQLiteOpenHelper, DAO, 本地多账号隔离 |
 | 客户端网络 | OkHttp HTTP + WebSocket |
 | 服务端 | Kotlin/JVM, Netty WebSocket, JDK HttpServer |
-| 服务端存储 | 内存 DataStore + MySQL 快照/镜像表 |
+| 服务端存储 | DataStore 运行时缓存 + MySQL 结构化表持久化 |
 | 媒体存储 | 阿里云 OSS，私有 Bucket 签名 URL，本地缓存 |
 | 自定义协议 | WebSocket 二进制帧 + JSON body + CRC32 |
 | 测试与 CI | JUnit4, Gradle, GitHub Actions |
@@ -302,7 +302,7 @@ flowchart TD
     WS --> Service["CommandHandler\nMessageDeliveryService\nEventService"]
     API --> Service
     Service --> Store["DataStore\n运行时权威状态"]
-    Store --> MySQL["MySQL\nlightchat_state + 镜像表"]
+    Store --> MySQL["MySQL\n结构化业务表"]
     API --> OSS["Aliyun OSS\n原图 + 缩略图"]
     Service --> Push["Mock Push Gateway\nADB 显式广播"]
 ```
@@ -416,7 +416,7 @@ Android 本地 SQLite 主要表：
 | `sync_state` | 用户维度同步游标 `lastUserSeq` |
 | `auth_session` | 本地登录态 |
 
-服务端 MySQL 默认数据库为 `lightchat`。当前服务端以内存 `DataStore` 为运行时权威状态，通过 `lightchat_state` 快照和多张镜像表落地，便于重启恢复、Navicat 查询和后续迁移到纯关系型实现。核心服务端表包括 `users`、`credentials`、`conversations`、`conversation_members`、`messages`、`message_receipts`、`chat_groups`、`group_members`、`user_seq_counters`、`conversation_seq_counters`、`inbox_events`。
+服务端 MySQL 默认数据库为 `lightchat`。当前服务端使用结构化业务表持久化数据，启动时由 `MySqlStatePersistence.load()` 从 `users`、`credentials`、`conversations`、`messages`、`chat_groups`、`inbox_events` 等表恢复到运行时 `DataStore`；运行期间 `DataStore` 作为内存缓存承接业务读写，并通过异步持久化将变化 upsert 到 MySQL。服务端不再保存 `lightchat_state` 整体状态快照。核心服务端表包括 `users`、`credentials`、`conversations`、`conversation_participants`、`conversation_members`、`messages`、`message_receipts`、`chat_groups`、`group_members`、`friend_requests`、`user_seq_counters`、`conversation_seq_counters`、`inbox_events`。
 
 ## 运行指南
 
@@ -438,8 +438,6 @@ $env:JWT_SECRET="请换成自己的长随机字符串"
 $env:MYSQL_URL="jdbc:mysql://127.0.0.1:3307/lightchat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true"
 $env:MYSQL_USER="root"
 $env:MYSQL_PASSWORD="你的 MySQL 密码"
-$env:MYSQL_STATE_KEY="default"
-
 $env:MEDIA_STORAGE_PROVIDER="aliyun_oss"
 $env:ALIYUN_OSS_ACCESS_KEY_ID="你的 AccessKey ID"
 $env:ALIYUN_OSS_ACCESS_KEY_SECRET="你的 AccessKey Secret"
@@ -578,5 +576,5 @@ GitHub Actions 会在 `push`、`pull_request` 和手动触发时执行：
 
 - 生产级杀进程离线推送仍需接入 FCM 或厂商 SDK；当前 Mock Push 只用于本地三台设备调试。
 - 客户端服务地址仍是代码常量，后续可迁移到 BuildConfig 或运行时配置页。
-- 服务端 MySQL 当前为快照/镜像混合模式，后续可演进为纯关系型业务写入模型。
+- 服务端当前通过 `DataStore` 承载运行时状态，并异步 upsert 到 MySQL 结构化表；后续可进一步改为业务操作直接事务写入 MySQL。
 - UI 自动化测试尚未纳入 CI，当前 CI 主要覆盖 JVM 单元测试和构建。
