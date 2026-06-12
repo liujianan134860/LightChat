@@ -11,7 +11,6 @@ LightChat/
 |-- .github/workflows/ci.yml     # GitHub Actions CI
 |-- README.md                    # 项目首页说明
 |-- 技术方案文档.md              # 架构、核心方案、难点和亮点
-|-- 双端数据库表设计说明.md      # 客户端 SQLite 与服务端 MySQL 表设计
 |-- TESTING.md                   # 测试范围、运行方式和抓包验证
 |-- DECISIONS.md                 # ADR 架构决策记录
 |-- BUGFIX.md                    # 真实问题、排查过程和修复记录
@@ -134,8 +133,7 @@ GitHub Actions 会在 `push`、`pull_request` 和手动触发时运行客户端�
 
 | 文档 | 内容 |
 | --- | --- |
-| `技术方案文档.md` | 整体架构图、核心技术方案、难点解决方案和技术亮点 |
-| `双端数据库表设计说明.md` | 客户端 SQLite 与服务端 MySQL 表结构、索引和迁移说明 |
+| `技术方案文档.md` | 整体架构图、协议详细设计、双端数据库设计、核心技术方案、难点解决方案和技术亮点 |
 | `TESTING.md` | 单元测试、CI、抓包验证和验收测试说明 |
 | `DECISIONS.md` | 关键架构决策记录 |
 | `BUGFIX.md` | 真实问题、根因和修复过程 |
