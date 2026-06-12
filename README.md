@@ -11,244 +11,244 @@ LightChat 是一个面向 IM 核心链路实践的 Android 即时通讯项目。
 ## 目录结构
 
 ```text
-LightChat/
-|-- .github
-|   `-- workflows
-|       `-- ci.yml
-|-- .gitignore
-|-- AI_USAGE.md
-|-- app
-|   |-- build.gradle.kts
-|   |-- proguard-rules.pro
-|   `-- src
-|       |-- main
-|       |   |-- AndroidManifest.xml
-|       |   |-- java
-|       |   |   `-- com
-|       |   |       `-- lightchat
-|       |   |           |-- data
-|       |   |           |   |-- local
-|       |   |           |   |   |-- dao
-|       |   |           |   |   |   |-- ConversationDao.kt
-|       |   |           |   |   |   |-- FriendRequestDao.kt
-|       |   |           |   |   |   |-- GroupDao.kt
-|       |   |           |   |   |   |-- MessageDao.kt
-|       |   |           |   |   |   |-- SyncStateDao.kt
-|       |   |           |   |   |   `-- UserDao.kt
-|       |   |           |   |   |-- DatabaseHelper.kt
-|       |   |           |   |   |-- DatabaseSeeder.kt
-|       |   |           |   |   |-- TokenManager.kt
-|       |   |           |   |   `-- UserSession.kt
-|       |   |           |   |-- remote
-|       |   |           |   |   `-- AuthApiClient.kt
-|       |   |           |   `-- repository
-|       |   |           |       |-- AuthRepository.kt
-|       |   |           |       |-- ConversationRepository.kt
-|       |   |           |       |-- MessageRepository.kt
-|       |   |           |       `-- UserRepository.kt
-|       |   |           |-- event
-|       |   |           |   `-- AppEvents.kt
-|       |   |           |-- im
-|       |   |           |   |-- ConnectionManager.kt
-|       |   |           |   |-- ConnectionState.kt
-|       |   |           |   |-- HeartbeatManager.kt
-|       |   |           |   |-- ImClient.kt
-|       |   |           |   |-- ImForegroundService.kt
-|       |   |           |   `-- ReconnectManager.kt
-|       |   |           |-- LightChatApplication.kt
-|       |   |           |-- MainActivity.kt
-|       |   |           |-- MainContent.kt
-|       |   |           |-- model
-|       |   |           |   |-- Conversation.kt
-|       |   |           |   |-- ConversationId.kt
-|       |   |           |   |-- FriendRequest.kt
-|       |   |           |   |-- GroupMember.kt
-|       |   |           |   |-- ImGroup.kt
-|       |   |           |   |-- Message.kt
-|       |   |           |   `-- User.kt
-|       |   |           |-- notification
-|       |   |           |   |-- MockVendorPushReceiver.kt
-|       |   |           |   `-- NotificationHelper.kt
-|       |   |           |-- protocol
-|       |   |           |   |-- Cmd.kt
-|       |   |           |   |-- Packet.kt
-|       |   |           |   `-- ProtocolCodec.kt
-|       |   |           |-- sync
-|       |   |           |   |-- EventProcessor.kt
-|       |   |           |   |-- EventType.kt
-|       |   |           |   |-- SyncEvent.kt
-|       |   |           |   `-- SyncManager.kt
-|       |   |           |-- ui
-|       |   |           |   |-- chat
-|       |   |           |   |   |-- ChatInputBar.kt
-|       |   |           |   |   |-- ChatMentionDialog.kt
-|       |   |           |   |   |-- ChatMessageBubble.kt
-|       |   |           |   |   |-- ChatMessageList.kt
-|       |   |           |   |   |-- ChatMessageTime.kt
-|       |   |           |   |   |-- ChatScreen.kt
-|       |   |           |   |   |-- ChatScreenComponents.kt
-|       |   |           |   |   |-- ChatScreenDialogs.kt
-|       |   |           |   |   |-- ChatScrollController.kt
-|       |   |           |   |   |-- ImageDoodleCanvas.kt
-|       |   |           |   |   |-- ImageEditScreen.kt
-|       |   |           |   |   |-- ImageGesture.kt
-|       |   |           |   |   |-- ImageUtils.kt
-|       |   |           |   |   |-- ImageViewerScreen.kt
-|       |   |           |   |   |-- PhotoDetailScreen.kt
-|       |   |           |   |   |-- PhotoEditScreen.kt
-|       |   |           |   |   |-- PhotoPickerScreen.kt
-|       |   |           |   |   `-- PictureCacheManager.kt
-|       |   |           |   |-- components
-|       |   |           |   |   |-- AvatarCacheLoader.kt
-|       |   |           |   |   `-- LightChatAvatar.kt
-|       |   |           |   |-- contact
-|       |   |           |   |   `-- ContactScreen.kt
-|       |   |           |   |-- conversation
-|       |   |           |   |   `-- ConversationListScreen.kt
-|       |   |           |   |-- forward
-|       |   |           |   |   |-- ForwardPreviewScreen.kt
-|       |   |           |   |   |-- ForwardSelectScreen.kt
-|       |   |           |   |   `-- MergeForwardDetailScreen.kt
-|       |   |           |   |-- friend
-|       |   |           |   |   |-- AddFriendScreen.kt
-|       |   |           |   |   `-- FriendRequestScreen.kt
-|       |   |           |   |-- group
-|       |   |           |   |   |-- GroupCreateScreen.kt
-|       |   |           |   |   |-- GroupInviteScreen.kt
-|       |   |           |   |   |-- GroupListScreen.kt
-|       |   |           |   |   `-- GroupMemberListScreen.kt
-|       |   |           |   |-- login
-|       |   |           |   |   `-- LoginScreen.kt
-|       |   |           |   |-- main
-|       |   |           |   |   `-- MainScreen.kt
-|       |   |           |   |-- navigation
-|       |   |           |   |   `-- NavGraph.kt
-|       |   |           |   |-- profile
-|       |   |           |   |   |-- ProfileScreen.kt
-|       |   |           |   |   `-- UserCardShareScreen.kt
-|       |   |           |   |-- search
-|       |   |           |   |   |-- ChatSearchScreen.kt
-|       |   |           |   |   `-- SearchScreen.kt
-|       |   |           |   `-- theme
-|       |   |           |       |-- Color.kt
-|       |   |           |       |-- Theme.kt
-|       |   |           |       `-- Type.kt
-|       |   |           |-- util
-|       |   |           |   `-- ToastExt.kt
-|       |   |           `-- viewmodel
-|       |   |               |-- ChatViewModel.kt
-|       |   |               |-- ContactViewModel.kt
-|       |   |               |-- ConversationListViewModel.kt
-|       |   |               |-- GroupCreateViewModel.kt
-|       |   |               `-- LoginViewModel.kt
-|       |   `-- res
-|       |       |-- drawable
-|       |       |   `-- ic_launcher_foreground.xml
-|       |       |-- mipmap-hdpi
-|       |       |   |-- ic_launcher.png
-|       |       |   `-- ic_launcher_round.png
-|       |       |-- mipmap-mdpi
-|       |       |   |-- ic_launcher.png
-|       |       |   `-- ic_launcher_round.png
-|       |       |-- mipmap-xhdpi
-|       |       |   |-- ic_launcher.png
-|       |       |   `-- ic_launcher_round.png
-|       |       |-- mipmap-xxhdpi
-|       |       |   |-- ic_launcher.png
-|       |       |   `-- ic_launcher_round.png
-|       |       |-- mipmap-xxxhdpi
-|       |       |   |-- ic_launcher.png
-|       |       |   `-- ic_launcher_round.png
-|       |       `-- values
-|       |           |-- colors.xml
-|       |           |-- strings.xml
-|       |           `-- themes.xml
-|       `-- test
-|           `-- java
-|               `-- com
-|                   `-- lightchat
-|                       |-- model
-|                       |   `-- ConversationIdTest.kt
-|                       |-- protocol
-|                       |   |-- CmdTest.kt
-|                       |   `-- ProtocolCodecTest.kt
-|                       `-- ui
-|                           `-- chat
-|                               |-- ChatMessageTimeTest.kt
-|                               `-- ChatScrollControllerTest.kt
-|-- BUGFIX.md
-|-- build.gradle.kts
-|-- DECISIONS.md
-|-- gradle
-|   `-- wrapper
-|       |-- gradle-wrapper.jar
-|       `-- gradle-wrapper.properties
-|-- gradle.properties
-|-- gradlew
-|-- gradlew.bat
-|-- README.md
-|-- server
-|   |-- build.gradle.kts
-|   `-- src
-|       |-- main
-|       |   `-- kotlin
-|       |       `-- com
-|       |           `-- lightchat
-|       |               `-- server
-|       |                   |-- handler
-|       |                   |   |-- MessageDeliveryService.kt
-|       |                   |   `-- PacketDispatcher.kt
-|       |                   |-- http
-|       |                   |   `-- AuthHttpServer.kt
-|       |                   |-- Main.kt
-|       |                   |-- media
-|       |                   |   |-- AliyunOssMediaStorage.kt
-|       |                   |   `-- MediaStorage.kt
-|       |                   |-- model
-|       |                   |   |-- InboxEvent.kt
-|       |                   |   |-- ServerConversation.kt
-|       |                   |   |-- ServerGroup.kt
-|       |                   |   |-- ServerMessage.kt
-|       |                   |   `-- ServerUser.kt
-|       |                   |-- netty
-|       |                   |   |-- NettyClientConnection.kt
-|       |                   |   `-- NettyLightChatWebSocketServer.kt
-|       |                   |-- protocol
-|       |                   |   |-- Cmd.kt
-|       |                   |   |-- Packet.kt
-|       |                   |   `-- ProtocolCodec.kt
-|       |                   |-- push
-|       |                   |   `-- MockVendorPushGateway.kt
-|       |                   |-- security
-|       |                   |   |-- JwtService.kt
-|       |                   |   `-- PasswordHasher.kt
-|       |                   |-- session
-|       |                   |   |-- ClientConnection.kt
-|       |                   |   `-- ConnectionRegistry.kt
-|       |                   `-- store
-|       |                       |-- DataStore.kt
-|       |                       |-- EventService.kt
-|       |                       |-- MySqlStatePersistence.kt
-|       |                       `-- StatePersistence.kt
-|       `-- test
-|           `-- kotlin
-|               `-- com
-|                   `-- lightchat
-|                       `-- server
-|                           |-- handler
-|                           |   `-- MessageDeliveryServiceTest.kt
-|                           |-- protocol
-|                           |   `-- ProtocolCodecTest.kt
-|                           |-- security
-|                           |   `-- PasswordHasherTest.kt
-|                           |-- session
-|                           |   `-- ConnectionRegistryTest.kt
-|                           `-- store
-|                               |-- DataStoreTest.kt
-|                               `-- EventServiceTest.kt
-|-- settings.gradle.kts
-|-- TESTING.md
-`-- 双端数据库表设计说明.md
+LightChat/  # 项目根目录
+|-- .github  # GitHub 配置目录
+|   `-- workflows  # GitHub Actions 工作流目录
+|       `-- ci.yml  # GitHub Actions CI，自动运行测试和构建
+|-- .gitignore  # Git 忽略规则，排除密钥、日志、构建产物和本地数据
+|-- AI_USAGE.md  # AI 辅助方案采纳与未采纳记录
+|-- app  # Android 客户端模块
+|   |-- build.gradle.kts  # Android 客户端模块构建配置
+|   |-- proguard-rules.pro  # Android 混淆与压缩规则
+|   `-- src  # Android 源码目录
+|       |-- main  # Android 主源码集
+|       |   |-- AndroidManifest.xml  # Android 应用清单，声明权限、组件和入口 Activity
+|       |   |-- java  # Kotlin/Java 源码根目录
+|       |   |   `-- com  # Java 包路径
+|       |   |       `-- lightchat  # 客户端主包
+|       |   |           |-- data  # 客户端数据层
+|       |   |           |   |-- local  # 本地 SQLite、Token 和会话数据
+|       |   |           |   |   |-- dao  # SQLite DAO 目录
+|       |   |           |   |   |   |-- ConversationDao.kt  # 会话表 DAO，负责会话列表、置顶、免打扰和未读状态
+|       |   |           |   |   |   |-- FriendRequestDao.kt  # 好友申请 DAO，负责申请缓存和状态更新
+|       |   |           |   |   |   |-- GroupDao.kt  # 群资料、群成员和群会话状态 DAO
+|       |   |           |   |   |   |-- MessageDao.kt  # 消息 DAO，负责消息分页、搜索、状态和回执数据
+|       |   |           |   |   |   |-- SyncStateDao.kt  # 同步游标 DAO，保存 lastUserSeq 等增量同步进度
+|       |   |           |   |   |   `-- UserDao.kt  # 用户和好友资料 DAO，负责资料、头像和联系人缓存
+|       |   |           |   |   |-- DatabaseHelper.kt  # SQLiteOpenHelper，定义本地表结构、索引和迁移
+|       |   |           |   |   |-- DatabaseSeeder.kt  # 本地测试/默认数据初始化辅助
+|       |   |           |   |   |-- TokenManager.kt  # JWT Token 本地保存、读取和会话持久化
+|       |   |           |   |   `-- UserSession.kt  # 当前登录用户会话信息管理
+|       |   |           |   |-- remote  # HTTP 远程接口目录
+|       |   |           |   |   `-- AuthApiClient.kt  # HTTP API 客户端，处理登录注册、资料、媒体和 Bootstrap 请求
+|       |   |           |   `-- repository  # Repository 数据仓库目录
+|       |   |           |       |-- AuthRepository.kt  # 认证仓库，封装登录注册和 Token 保存流程
+|       |   |           |       |-- ConversationRepository.kt  # 会话仓库，连接会话 DAO 与界面层
+|       |   |           |       |-- MessageRepository.kt  # 消息仓库，封装消息读写、分页和状态更新
+|       |   |           |       `-- UserRepository.kt  # 用户仓库，封装资料、好友和头像相关数据访问
+|       |   |           |-- event  # 应用内事件目录
+|       |   |           |   `-- AppEvents.kt  # 应用内事件总线，通知 UI 刷新和跨页面状态变化
+|       |   |           |-- im  # IM 长连接目录
+|       |   |           |   |-- ConnectionManager.kt  # WebSocket 连接管理，负责连接、鉴权、收包和发包
+|       |   |           |   |-- ConnectionState.kt  # IM 长连接状态定义
+|       |   |           |   |-- HeartbeatManager.kt  # 心跳发送与心跳 ACK 超时检测
+|       |   |           |   |-- ImClient.kt  # IM 客户端门面，封装协议命令发送能力
+|       |   |           |   |-- ImForegroundService.kt  # 前台保活服务，用于维持 IM 连接生命周期
+|       |   |           |   `-- ReconnectManager.kt  # 断线重连与指数退避策略管理
+|       |   |           |-- LightChatApplication.kt  # Application 初始化数据库、会话、网络和全局服务
+|       |   |           |-- MainActivity.kt  # Android 主 Activity，承载 Compose 根界面
+|       |   |           |-- MainContent.kt  # 客户端主内容入口，组装主导航和全局状态
+|       |   |           |-- model  # 客户端领域模型目录
+|       |   |           |   |-- Conversation.kt  # 客户端会话领域模型
+|       |   |           |   |-- ConversationId.kt  # 单聊/群聊会话 ID 生成规则
+|       |   |           |   |-- FriendRequest.kt  # 好友申请领域模型
+|       |   |           |   |-- GroupMember.kt  # 群成员领域模型
+|       |   |           |   |-- ImGroup.kt  # 群聊领域模型
+|       |   |           |   |-- Message.kt  # 消息领域模型和消息类型/状态定义
+|       |   |           |   `-- User.kt  # 用户资料领域模型
+|       |   |           |-- notification  # 通知与 Mock 推送目录
+|       |   |           |   |-- MockVendorPushReceiver.kt  # 本地 Mock 推送广播接收器
+|       |   |           |   `-- NotificationHelper.kt  # 系统通知创建与展示工具
+|       |   |           |-- protocol  # 客户端自定义协议目录
+|       |   |           |   |-- Cmd.kt  # 客户端自定义协议命令号定义
+|       |   |           |   |-- Packet.kt  # 客户端协议包数据结构
+|       |   |           |   `-- ProtocolCodec.kt  # 客户端二进制协议编码与解码
+|       |   |           |-- sync  # 增量同步目录
+|       |   |           |   |-- EventProcessor.kt  # 增量事件串行落库处理器
+|       |   |           |   |-- EventType.kt  # 同步事件类型定义
+|       |   |           |   |-- SyncEvent.kt  # 同步事件数据结构
+|       |   |           |   `-- SyncManager.kt  # 增量同步调度，负责 SYNC 拉取和游标推进
+|       |   |           |-- ui  # Compose UI 页面目录
+|       |   |           |   |-- chat  # 聊天详情与图片相关 UI
+|       |   |           |   |   |-- ChatInputBar.kt  # 聊天输入栏，处理文本、图片、@ 和发送动作
+|       |   |           |   |   |-- ChatMentionDialog.kt  # @ 成员选择弹窗
+|       |   |           |   |   |-- ChatMessageBubble.kt  # 消息气泡 UI，支持文本、图片、名片和合并转发
+|       |   |           |   |   |-- ChatMessageList.kt  # 聊天消息列表，负责分页、定位和高亮展示
+|       |   |           |   |   |-- ChatMessageTime.kt  # 聊天时间分割展示逻辑
+|       |   |           |   |   |-- ChatScreen.kt  # 聊天详情主页面
+|       |   |           |   |   |-- ChatScreenComponents.kt  # 聊天页通用 Compose 组件
+|       |   |           |   |   |-- ChatScreenDialogs.kt  # 聊天页弹窗、长按菜单和多选操作组件
+|       |   |           |   |   |-- ChatScrollController.kt  # 聊天列表滚动、定位和锚点控制逻辑
+|       |   |           |   |   |-- ImageDoodleCanvas.kt  # 图片编辑涂鸦画布
+|       |   |           |   |   |-- ImageEditScreen.kt  # 图片编辑页面
+|       |   |           |   |   |-- ImageGesture.kt  # 图片缩放、拖动和手势处理
+|       |   |           |   |   |-- ImageUtils.kt  # 图片压缩、缩略图和 Bitmap 工具
+|       |   |           |   |   |-- ImageViewerScreen.kt  # 聊天图片全屏查看页面
+|       |   |           |   |   |-- PhotoDetailScreen.kt  # 相册图片预览详情页
+|       |   |           |   |   |-- PhotoEditScreen.kt  # 相册图片编辑页
+|       |   |           |   |   |-- PhotoPickerScreen.kt  # 相册网格选择页，支持多选和拖动选择
+|       |   |           |   |   `-- PictureCacheManager.kt  # 图片本地缓存、原图拉取和 URL 刷新管理
+|       |   |           |   |-- components  # 通用 UI 组件
+|       |   |           |   |   |-- AvatarCacheLoader.kt  # 头像缓存加载器，优先读取本地缓存
+|       |   |           |   |   `-- LightChatAvatar.kt  # 统一头像展示组件
+|       |   |           |   |-- contact  # 联系人 UI
+|       |   |           |   |   `-- ContactScreen.kt  # 联系人页面和联系人搜索入口
+|       |   |           |   |-- conversation  # 会话列表 UI
+|       |   |           |   |   `-- ConversationListScreen.kt  # 主页会话列表页面
+|       |   |           |   |-- forward  # 转发 UI
+|       |   |           |   |   |-- ForwardPreviewScreen.kt  # 转发确认和预览页面
+|       |   |           |   |   |-- ForwardSelectScreen.kt  # 转发目标选择页面
+|       |   |           |   |   `-- MergeForwardDetailScreen.kt  # 合并转发详情页面
+|       |   |           |   |-- friend  # 好友 UI
+|       |   |           |   |   |-- AddFriendScreen.kt  # 添加好友和用户搜索页面
+|       |   |           |   |   `-- FriendRequestScreen.kt  # 好友申请列表与处理页面
+|       |   |           |   |-- group  # 群聊 UI
+|       |   |           |   |   |-- GroupCreateScreen.kt  # 创建群聊页面
+|       |   |           |   |   |-- GroupInviteScreen.kt  # 邀请群成员页面
+|       |   |           |   |   |-- GroupListScreen.kt  # 群聊列表页面
+|       |   |           |   |   `-- GroupMemberListScreen.kt  # 群成员列表和成员资料入口
+|       |   |           |   |-- login  # 登录注册 UI
+|       |   |           |   |   `-- LoginScreen.kt  # 登录注册页面
+|       |   |           |   |-- main  # 主页面 UI
+|       |   |           |   |   `-- MainScreen.kt  # 主页面底部导航和页面容器
+|       |   |           |   |-- navigation  # 导航路由 UI
+|       |   |           |   |   `-- NavGraph.kt  # Compose Navigation 路由图
+|       |   |           |   |-- profile  # 资料与名片 UI
+|       |   |           |   |   |-- ProfileScreen.kt  # 个人资料和用户详情页面
+|       |   |           |   |   `-- UserCardShareScreen.kt  # 推荐好友名片选择页面
+|       |   |           |   |-- search  # 搜索 UI
+|       |   |           |   |   |-- ChatSearchScreen.kt  # 单聊/群聊聊天记录搜索页面
+|       |   |           |   |   `-- SearchScreen.kt  # 主页全局搜索页面
+|       |   |           |   `-- theme  # Compose 主题目录
+|       |   |           |       |-- Color.kt  # Compose 主题颜色定义
+|       |   |           |       |-- Theme.kt  # Compose Material 主题配置
+|       |   |           |       `-- Type.kt  # Compose 字体排版配置
+|       |   |           |-- util  # 客户端工具扩展目录
+|       |   |           |   `-- ToastExt.kt  # Toast 快捷扩展方法
+|       |   |           `-- viewmodel  # 客户端 ViewModel 目录
+|       |   |               |-- ChatViewModel.kt  # 聊天详情状态管理和消息发送/接收逻辑
+|       |   |               |-- ContactViewModel.kt  # 联系人页面状态管理
+|       |   |               |-- ConversationListViewModel.kt  # 会话列表状态管理和分页加载
+|       |   |               |-- GroupCreateViewModel.kt  # 创建群聊状态管理
+|       |   |               `-- LoginViewModel.kt  # 登录注册状态管理
+|       |   `-- res  # Android 资源目录
+|       |       |-- drawable  # Drawable 资源目录
+|       |       |   `-- ic_launcher_foreground.xml  # 应用启动图标前景矢量资源
+|       |       |-- mipmap-hdpi  # hdpi 图标资源
+|       |       |   |-- ic_launcher.png  # hdpi 应用图标
+|       |       |   `-- ic_launcher_round.png  # hdpi 圆形应用图标
+|       |       |-- mipmap-mdpi  # mdpi 图标资源
+|       |       |   |-- ic_launcher.png  # mdpi 应用图标
+|       |       |   `-- ic_launcher_round.png  # mdpi 圆形应用图标
+|       |       |-- mipmap-xhdpi  # xhdpi 图标资源
+|       |       |   |-- ic_launcher.png  # xhdpi 应用图标
+|       |       |   `-- ic_launcher_round.png  # xhdpi 圆形应用图标
+|       |       |-- mipmap-xxhdpi  # xxhdpi 图标资源
+|       |       |   |-- ic_launcher.png  # xxhdpi 应用图标
+|       |       |   `-- ic_launcher_round.png  # xxhdpi 圆形应用图标
+|       |       |-- mipmap-xxxhdpi  # xxxhdpi 图标资源
+|       |       |   |-- ic_launcher.png  # xxxhdpi 应用图标
+|       |       |   `-- ic_launcher_round.png  # xxxhdpi 圆形应用图标
+|       |       `-- values  # Android values 资源目录
+|       |           |-- colors.xml  # Android 资源颜色定义
+|       |           |-- strings.xml  # Android 字符串资源
+|       |           `-- themes.xml  # Android 系统主题资源
+|       `-- test  # Android 单元测试源码集
+|           `-- java  # Android JVM 单元测试根目录
+|               `-- com  # 测试包路径
+|                   `-- lightchat  # 客户端测试主包
+|                       |-- model  # 模型测试目录
+|                       |   `-- ConversationIdTest.kt  # 会话 ID 生成规则单元测试
+|                       |-- protocol  # 协议测试目录
+|                       |   |-- CmdTest.kt  # 协议命令号单元测试
+|                       |   `-- ProtocolCodecTest.kt  # 客户端协议编解码单元测试
+|                       `-- ui  # UI 逻辑测试目录
+|                           `-- chat  # 聊天 UI 逻辑测试目录
+|                               |-- ChatMessageTimeTest.kt  # 聊天时间显示规则单元测试
+|                               `-- ChatScrollControllerTest.kt  # 聊天滚动控制逻辑单元测试
+|-- BUGFIX.md  # 真实缺陷、排查过程和根因记录
+|-- build.gradle.kts  # 根工程 Gradle 构建配置
+|-- DECISIONS.md  # 关键架构决策记录，ADR 格式
+|-- gradle  # Gradle Wrapper 目录
+|   `-- wrapper  # Gradle Wrapper 配置目录
+|       |-- gradle-wrapper.jar  # Gradle Wrapper 运行 jar
+|       `-- gradle-wrapper.properties  # Gradle Wrapper 版本与分发地址配置
+|-- gradle.properties  # Gradle 全局构建属性
+|-- gradlew  # Linux/macOS Gradle Wrapper 启动脚本
+|-- gradlew.bat  # Windows Gradle Wrapper 启动脚本
+|-- README.md  # 项目总览、架构、运行指南和功能清单
+|-- server  # Kotlin/JVM 服务端模块
+|   |-- build.gradle.kts  # 服务端模块 Gradle 构建配置
+|   `-- src  # 服务端源码目录
+|       |-- main  # 服务端主源码集
+|       |   `-- kotlin  # 服务端 Kotlin 源码根目录
+|       |       `-- com  # 服务端包路径
+|       |           `-- lightchat  # 服务端项目包
+|       |               `-- server  # 服务端主包
+|       |                   |-- handler  # 协议命令和消息投递处理目录
+|       |                   |   |-- MessageDeliveryService.kt  # 服务端消息投递、ACK、已读和同步事件生成服务
+|       |                   |   `-- PacketDispatcher.kt  # 服务端协议命令分发器
+|       |                   |-- http  # HTTP API 目录
+|       |                   |   `-- AuthHttpServer.kt  # HTTP 接口服务，处理认证、资料、媒体和 Bootstrap
+|       |                   |-- Main.kt  # 服务端启动入口，初始化 HTTP、WebSocket、存储和推送
+|       |                   |-- media  # 媒体存储目录
+|       |                   |   |-- AliyunOssMediaStorage.kt  # 阿里云 OSS 媒体存储实现
+|       |                   |   `-- MediaStorage.kt  # 媒体存储抽象接口
+|       |                   |-- model  # 服务端领域模型目录
+|       |                   |   |-- InboxEvent.kt  # 服务端 Inbox 增量事件模型
+|       |                   |   |-- ServerConversation.kt  # 服务端会话模型
+|       |                   |   |-- ServerGroup.kt  # 服务端群聊模型
+|       |                   |   |-- ServerMessage.kt  # 服务端消息模型
+|       |                   |   `-- ServerUser.kt  # 服务端用户模型
+|       |                   |-- netty  # Netty WebSocket 目录
+|       |                   |   |-- NettyClientConnection.kt  # Netty 客户端连接封装
+|       |                   |   `-- NettyLightChatWebSocketServer.kt  # Netty WebSocket 服务端实现
+|       |                   |-- protocol  # 服务端协议目录
+|       |                   |   |-- Cmd.kt  # 服务端协议命令号定义
+|       |                   |   |-- Packet.kt  # 服务端协议包数据结构
+|       |                   |   `-- ProtocolCodec.kt  # 服务端二进制协议编解码
+|       |                   |-- push  # Mock 推送目录
+|       |                   |   `-- MockVendorPushGateway.kt  # 本地 Mock 离线推送网关
+|       |                   |-- security  # 认证与密码安全目录
+|       |                   |   |-- JwtService.kt  # JWT 签发和校验服务
+|       |                   |   `-- PasswordHasher.kt  # 密码哈希、校验和旧密码升级工具
+|       |                   |-- session  # 在线连接管理目录
+|       |                   |   |-- ClientConnection.kt  # 服务端客户端连接接口
+|       |                   |   `-- ConnectionRegistry.kt  # 在线连接注册表，按用户 ID 管理连接
+|       |                   `-- store  # 状态存储和同步事件目录
+|       |                       |-- DataStore.kt  # 服务端运行时内存状态存储
+|       |                       |-- EventService.kt  # 服务端 userSeq/conversationSeq 和 Inbox 事件服务
+|       |                       |-- MySqlStatePersistence.kt  # MySQL 快照与镜像表持久化实现
+|       |                       `-- StatePersistence.kt  # 服务端状态持久化接口
+|       `-- test  # 服务端测试源码集
+|           `-- kotlin  # 服务端 Kotlin 测试根目录
+|               `-- com  # 服务端测试包路径
+|                   `-- lightchat  # 服务端测试项目包
+|                       `-- server  # 服务端测试主包
+|                           |-- handler  # 消息投递测试目录
+|                           |   `-- MessageDeliveryServiceTest.kt  # 消息投递服务单元测试
+|                           |-- protocol  # 协议测试目录
+|                           |   `-- ProtocolCodecTest.kt  # 服务端协议编解码单元测试
+|                           |-- security  # 安全测试目录
+|                           |   `-- PasswordHasherTest.kt  # 密码哈希与校验单元测试
+|                           |-- session  # 连接管理测试目录
+|                           |   `-- ConnectionRegistryTest.kt  # 连接注册表单元测试
+|                           `-- store  # 存储与同步测试目录
+|                               |-- DataStoreTest.kt  # DataStore 状态存储单元测试
+|                               `-- EventServiceTest.kt  # EventService 序列号与事件同步单元测试
+|-- settings.gradle.kts  # Gradle 模块声明，包含 app 和 server
+|-- TESTING.md  # 测试范围、运行方式、CI 和抓包验证说明
+`-- 双端数据库表设计说明.md  # 客户端 SQLite 与服务端 MySQL 表设计说明
 ```
 
 ## 项目文档
@@ -258,8 +258,6 @@ LightChat/
 | `README.md` | 项目简介、架构图、运行指南、自定义协议、功能勾选表和当前限制 |
 | `双端数据库表设计说明.md` | 客户端 SQLite 与服务端 MySQL 的表结构、索引、迁移历史和设计决策 |
 | `TESTING.md` | 本地测试、CI 自动测试、抓包验证和人工验收说明 |
-| `性能优化说明.md` | 开屏、会话列表、聊天记录、图片和同步链路的性能优化记录 |
-| `问题修复与测试记录.md` | 主要缺陷、排查过程、修复方式和回归验证 |
 | `AI_USAGE.md` | AI 给出的方案中采纳/未采纳的案例与原因 |
 | `DECISIONS.md` | 关键架构决策记录，采用 ADR 格式 |
 | `BUGFIX.md` | 真实踩坑、根因分析和最终修复方案 |
