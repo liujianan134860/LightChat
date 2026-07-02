@@ -75,6 +75,8 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:data"))
     implementation(project(":core:domain"))
+    implementation(project(":core:designsystem"))
+    implementation(project(":feature:auth"))
     implementation(project(":shared:protocol"))
 
     // Core

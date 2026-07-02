@@ -7,7 +7,7 @@ import com.lightchat.domain.repository.AuthRepositoryContract
 import com.lightchat.domain.session.ConnectionController
 import com.lightchat.domain.usecase.LoginUseCase
 import com.lightchat.domain.usecase.RegisterUseCase
-import com.lightchat.sync.SyncManager
+import com.lightchat.domain.session.SyncController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +36,7 @@ class LoginViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
     private val tokenManager: TokenManager,
     private val connectionController: ConnectionController,
-    private val syncManager: SyncManager
+    private val syncManager: SyncController
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
