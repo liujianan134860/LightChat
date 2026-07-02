@@ -48,7 +48,6 @@ class ReconnectManager(
 
     private fun calculateDelay(retry: Int): Long {
         // 1s, 2s, 4s, 8s, 16s, 30s, 30s, ...
-        val delay = 1000L shl retry.coerceAtMost(5)
-        return delay.coerceAtMost(maxDelay)
+        return ReconnectBackoff.capForAttempt(retry, maxDelayMs = maxDelay)
     }
 }

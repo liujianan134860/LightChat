@@ -48,9 +48,15 @@ object AppModule {
     @Provides @Singleton fun provideFriendRequestDao(db: DatabaseHelper) = FriendRequestDao(db)
 
     @Provides @Singleton fun provideAuthApiClient() = AuthApiClient()
-    @Provides @Singleton fun provideUserRepository(dao: UserDao) = UserRepository(dao)
+    @Provides
+    @Singleton
+    fun provideUserRepository(dao: UserDao, userSession: UserSession) =
+        UserRepository(dao, userSession)
     @Provides @Singleton fun provideMessageRepository(dao: MessageDao) = MessageRepository(dao)
-    @Provides @Singleton fun provideConversationRepository(dao: ConversationDao) = ConversationRepository(dao)
+    @Provides
+    @Singleton
+    fun provideConversationRepository(dao: ConversationDao, imClient: ImClient) =
+        ConversationRepository(dao, imClient)
 
     @Provides
     @Singleton

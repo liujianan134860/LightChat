@@ -1,11 +1,14 @@
 package com.lightchat.data.repository
 
-import com.lightchat.LightChatApplication
 import com.lightchat.data.local.dao.ConversationDao
 import com.lightchat.event.AppEvents
+import com.lightchat.im.ImClient
 import com.lightchat.model.Conversation
 
-class ConversationRepository(private val conversationDao: ConversationDao) {
+class ConversationRepository(
+    private val conversationDao: ConversationDao,
+    private val imClient: ImClient
+) {
 
     fun getConversations(): List<Conversation> {
         return conversationDao.getAllVisible()
@@ -68,11 +71,10 @@ class ConversationRepository(private val conversationDao: ConversationDao) {
     }
 
     private fun syncToServer(conversationId: String, isPinned: Boolean?, pinnedTime: Long?, mute: Boolean?) {
-        val app = LightChatApplication.instance
         val conv = conversationDao.getById(conversationId) ?: return
         val finalPinned = isPinned ?: conv.isPinned
         val finalTime = pinnedTime ?: conv.pinnedTime
         val finalMute = mute ?: conv.mute
-        app.imClient.updateConversationSettings(conversationId, finalPinned, finalTime, finalMute)
+        imClient.updateConversationSettings(conversationId, finalPinned, finalTime, finalMute)
     }
 }
