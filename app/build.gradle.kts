@@ -77,6 +77,8 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:designsystem"))
     implementation(project(":feature:auth"))
+    implementation(project(":feature:conversation"))
+    implementation(project(":feature:social"))
     implementation(project(":shared:protocol"))
 
     // Core

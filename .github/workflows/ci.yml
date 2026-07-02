@@ -29,6 +29,10 @@ jobs:
             task: ":shared:protocol:test"
           - module: feature-auth
             task: ":feature:auth:testDebugUnitTest"
+          - module: feature-conversation
+            task: ":feature:conversation:testDebugUnitTest"
+          - module: feature-social
+            task: ":feature:social:testDebugUnitTest"
           - module: app
             task: ":app:testDebugUnitTest"
           - module: server
