@@ -1,5 +1,6 @@
 package com.lightchat.data.remote
 
+import com.lightchat.core.network.NetworkClients
 import com.lightchat.model.User
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -9,7 +10,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
-import java.util.concurrent.TimeUnit
 
 data class AuthResponse(
     val token: String,
@@ -27,11 +27,7 @@ data class UploadedImage(
 
 class AuthApiClient(
     private val baseUrl: String = DEFAULT_BASE_URL,
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
-        .writeTimeout(5, TimeUnit.SECONDS)
-        .build()
+    private val client: OkHttpClient = NetworkClients.http
 ) {
     fun login(username: String, password: String): AuthResponse {
         return postAuth("/api/login", JSONObject().apply {

@@ -1,12 +1,12 @@
 package com.lightchat.im
 
+import com.lightchat.core.network.NetworkClients
 import com.lightchat.protocol.Packet
 import com.lightchat.protocol.ProtocolCodec
 import android.util.Log
 import kotlinx.coroutines.*
 import okhttp3.*
 import okio.ByteString
-import java.util.concurrent.TimeUnit
 
 class ConnectionManager(
     private val serverUrl: String = DEFAULT_URL
@@ -30,10 +30,7 @@ class ConnectionManager(
     var onLog: ((String) -> Unit)? = null
     var onKicked: ((String) -> Unit)? = null
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS) // No read timeout for WebSocket
-        .build()
+    private val client = NetworkClients.webSocket
 
     init {
         heartbeatManager = HeartbeatManager(

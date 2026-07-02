@@ -1,5 +1,5 @@
 plugins {
-    id("org.jetbrains.kotlin.jvm")
+    alias(libs.plugins.kotlin.jvm)
     application
 }
 
@@ -11,12 +11,13 @@ group = "com.lightchat.server"
 version = "1.0.0"
 
 dependencies {
-    implementation("io.netty:netty-all:4.1.109.Final")
-    implementation("org.json:json:20231013")
-    implementation("com.mysql:mysql-connector-j:8.4.0")
-    implementation("com.aliyun.oss:aliyun-sdk-oss:3.18.5")
+    implementation(project(":shared:protocol"))
+    implementation(libs.netty.all)
+    implementation(libs.json)
+    implementation(libs.mysql.connector)
+    implementation(libs.aliyun.oss)
 
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit4)
 }
 
 java {

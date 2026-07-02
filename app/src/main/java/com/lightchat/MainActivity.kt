@@ -18,7 +18,9 @@ import com.lightchat.event.AppEvents
 import com.lightchat.ui.navigation.Routes
 import com.lightchat.ui.theme.TopBarBackground
 import com.lightchat.ui.theme.WeChatGreen
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()

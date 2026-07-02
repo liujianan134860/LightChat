@@ -1,62 +1,17 @@
 package com.lightchat.server.protocol
 
-import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-import java.util.zip.CRC32
+import com.lightchat.protocol.Cmd
+import com.lightchat.protocol.BinaryPacketCodec
+import com.lightchat.protocol.Packet
 
 class ProtocolCodec {
 
-    private val crc32 = CRC32()
-
     fun encode(packet: Packet): ByteArray {
-        val headerBuffer = ByteBuffer.allocate(Packet.HEADER_SIZE)
-        headerBuffer.putShort(packet.magic)
-        headerBuffer.put(packet.version)
-        headerBuffer.put(packet.cmd)
-        headerBuffer.putLong(packet.seq)
-        headerBuffer.putInt(packet.body.size)
-
-        val headerBytes = headerBuffer.array()
-        val output = ByteArrayOutputStream()
-        output.write(headerBytes)
-        output.write(packet.body)
-
-        val headerAndBody = output.toByteArray()
-        crc32.reset()
-        crc32.update(headerAndBody)
-        val crcValue = crc32.value.toInt()
-        output.write(ByteBuffer.allocate(4).putInt(crcValue).array())
-
-        return output.toByteArray()
+        return BinaryPacketCodec.encode(packet)
     }
 
     fun decode(data: ByteArray): Packet? {
-        if (data.size < Packet.MIN_PACKET_SIZE) return null
-
-        val buffer = ByteBuffer.wrap(data)
-        val magic = buffer.getShort(0)
-        if (magic != Packet.MAGIC_NUMBER) return null
-
-        val version = buffer.get(2)
-        val cmd = buffer.get(3)
-        val seq = buffer.getLong(4)
-        val bodyLen = buffer.getInt(12)
-
-        val totalExpected = Packet.HEADER_SIZE + bodyLen + Packet.CRC_SIZE
-        if (data.size < totalExpected) return null
-
-        val body = ByteArray(bodyLen)
-        if (bodyLen > 0) {
-            System.arraycopy(data, Packet.HEADER_SIZE, body, 0, bodyLen)
-        }
-
-        val receivedCrc = ByteBuffer.wrap(data, Packet.HEADER_SIZE + bodyLen, 4).getInt()
-
-        crc32.reset()
-        crc32.update(data, 0, Packet.HEADER_SIZE + bodyLen)
-        if (crc32.value.toInt() != receivedCrc) return null
-
-        return Packet(magic = magic, version = version, cmd = cmd, seq = seq, body = body, crc = receivedCrc)
+        return BinaryPacketCodec.decode(data)
     }
 
     fun getBodyAsString(packet: Packet): String = String(packet.body, Charsets.UTF_8)

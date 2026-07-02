@@ -2,7 +2,12 @@ package com.lightchat.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lightchat.LightChatApplication
+import com.lightchat.data.local.TokenManager
+import com.lightchat.data.repository.AuthRepository
+import com.lightchat.im.ImClient
+import com.lightchat.sync.SyncManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,9 +27,13 @@ data class LoginUiState(
     val isCheckingAuth: Boolean = false
 )
 
-class LoginViewModel : ViewModel() {
-
-    private val authRepository = LightChatApplication.instance.authRepository
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager,
+    private val imClient: ImClient,
+    private val syncManager: SyncManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -89,11 +98,10 @@ class LoginViewModel : ViewModel() {
     }
 
     private fun connectImClient() {
-        val app = LightChatApplication.instance
-        val token = app.tokenManager.getToken()
+        val token = tokenManager.getToken()
         if (token != null) {
-            app.imClient.connect(token)
-            app.syncManager.start()
+            imClient.connect(token)
+            syncManager.start()
         }
     }
 

@@ -21,4 +21,3 @@ class ConversationIdTest {
         assertEquals("group_g1001", ConversationId.group("g1001"))
     }
 }
-

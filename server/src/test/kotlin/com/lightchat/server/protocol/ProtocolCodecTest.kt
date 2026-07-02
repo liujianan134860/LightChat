@@ -1,5 +1,7 @@
 package com.lightchat.server.protocol
 
+import com.lightchat.protocol.Cmd
+import com.lightchat.protocol.Packet
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -31,4 +33,3 @@ class ProtocolCodecTest {
         assertNull(codec.decode(encoded))
     }
 }
-

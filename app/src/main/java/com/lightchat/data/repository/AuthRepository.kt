@@ -1,8 +1,11 @@
 package com.lightchat.data.repository
 
-import com.lightchat.LightChatApplication
 import com.lightchat.data.local.TokenManager
 import com.lightchat.data.local.UserSession
+import com.lightchat.data.local.dao.ConversationDao
+import com.lightchat.data.local.dao.GroupDao
+import com.lightchat.data.local.dao.MessageDao
+import com.lightchat.data.local.dao.SyncStateDao
 import com.lightchat.data.local.dao.UserDao
 import com.lightchat.data.remote.AuthApiClient
 import com.lightchat.model.Conversation
@@ -19,6 +22,10 @@ import org.json.JSONObject
 
 class AuthRepository(
     private val userDao: UserDao,
+    private val messageDao: MessageDao,
+    private val conversationDao: ConversationDao,
+    private val groupDao: GroupDao,
+    private val syncStateDao: SyncStateDao,
     private val tokenManager: TokenManager,
     private val userSession: UserSession,
     private val authApiClient: AuthApiClient = AuthApiClient()
@@ -69,14 +76,12 @@ class AuthRepository(
     }
 
     private fun needsBootstrap(): Boolean {
-        val app = LightChatApplication.instance
-        val lastUserSeq = app.syncStateDao.getLastUserSeq()
-        val visibleConversationCount = app.conversationDao.getVisibleCount()
+        val lastUserSeq = syncStateDao.getLastUserSeq()
+        val visibleConversationCount = conversationDao.getVisibleCount()
         return lastUserSeq <= 0L || visibleConversationCount == 0
     }
 
     private fun cacheBootstrap(token: String) {
-        val app = LightChatApplication.instance
         val userId = userSession.currentUserId ?: return
         val root = authApiClient.bootstrap(token)
         val conversationSettings = mutableMapOf<String, BootstrapConversationSettings>()
@@ -116,11 +121,11 @@ class AuthRepository(
                     memberCount = obj.optJSONArray("members")?.length() ?: 0,
                     createTime = obj.optLong("createdAt", System.currentTimeMillis())
                 )
-                app.groupDao.insertGroup(group)
+                groupDao.insertGroup(group)
                 obj.optJSONArray("membersInfo")?.let { members ->
                     for (m in 0 until members.length()) {
                         val member = members.getJSONObject(m)
-                        app.groupDao.insertMember(
+                        groupDao.insertMember(
                             GroupMember(
                                 groupId = group.groupId,
                                 userId = member.getString("userId"),
@@ -141,10 +146,10 @@ class AuthRepository(
             for (i in 0 until messages.length()) {
                 val msgObj = messages.getJSONObject(i)
                 val msgId = msgObj.getString("messageId")
-                val existing = app.messageDao.getById(msgId)
+                val existing = messageDao.getById(msgId)
                 if (existing?.isDeleted == true) continue
                 val msg = msgObj.toClientMessage()
-                app.messageDao.insert(msg)
+                messageDao.insert(msg)
             }
         }
 
@@ -163,19 +168,19 @@ class AuthRepository(
                         .firstOrNull { it != userId }
                         ?: conversationId.removePrefix("single_").split("_").firstOrNull { it != userId }.orEmpty()
                 }
-                val lastMessage = app.messageDao.getMessagesByConversation(conversationId, 1).lastOrNull()
+                val lastMessage = messageDao.getMessagesByConversation(conversationId, 1).lastOrNull()
                 val title = if (type == "GROUP") {
-                    app.groupDao.getGroupById(groupId)?.groupName ?: "群聊"
+                    groupDao.getGroupById(groupId)?.groupName ?: "群聊"
                 } else {
                     userDao.getById(targetId)?.nickname ?: targetId
                 }
                 val convUser = userDao.getById(targetId)
-                val convGroup = if (type == "GROUP") app.groupDao.getGroupById(groupId) else null
+                val convGroup = if (type == "GROUP") groupDao.getGroupById(groupId) else null
                 val resolvedConversationId = conversationId.ifBlank {
                     if (type == "GROUP") ConversationId.group(groupId) else ConversationId.single(userId, targetId)
                 }
                 val settings = conversationSettings[resolvedConversationId]
-                app.conversationDao.insert(
+                conversationDao.insert(
                     Conversation(
                         conversationId = resolvedConversationId,
                         type = if (type == "GROUP") ConversationType.GROUP else ConversationType.SINGLE,
@@ -197,13 +202,13 @@ class AuthRepository(
 
         // Apply per-user conversation settings (pin/mute) from server bootstrap
         conversationSettings.forEach { (convId, settings) ->
-            app.conversationDao.setPinned(convId, settings.isPinned, settings.pinnedTime)
-            app.conversationDao.setMute(convId, settings.mute)
+            conversationDao.setPinned(convId, settings.isPinned, settings.pinnedTime)
+            conversationDao.setMute(convId, settings.mute)
         }
 
         val maxUserSeq = root.optLong("maxUserSeq", 0L)
         if (maxUserSeq > 0L) {
-            app.syncStateDao.setLastUserSeq(maxUserSeq)
+            syncStateDao.setLastUserSeq(maxUserSeq)
         }
     }
 

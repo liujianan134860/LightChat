@@ -12,4 +12,3 @@ class CmdTest {
         assertEquals("UNKNOWN(-1)", Cmd.name(-1))
     }
 }
-

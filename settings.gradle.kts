@@ -19,4 +19,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "LightChat"
 include(":app")
+include(":core:model")
+include(":core:network")
+include(":core:database")
+include(":shared:protocol")
 include(":server")

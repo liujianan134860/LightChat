@@ -5,21 +5,17 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
 import com.lightchat.LightChatApplication
+import com.lightchat.core.network.NetworkClients
 import com.lightchat.data.remote.AuthApiClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 
 object PictureCacheManager {
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
+    private val httpClient = NetworkClients.image
 
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 8).toInt().coerceAtLeast(4 * 1024 * 1024)
     private val memoryCache = object : LruCache<String, Bitmap>(maxMemory) {

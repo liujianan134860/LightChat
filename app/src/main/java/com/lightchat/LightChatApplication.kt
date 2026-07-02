@@ -21,37 +21,33 @@ import com.lightchat.data.repository.UserRepository
 import com.lightchat.im.ImClient
 import com.lightchat.sync.EventProcessor
 import com.lightchat.sync.SyncManager
+import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+@HiltAndroidApp
 class LightChatApplication : Application() {
 
-    lateinit var databaseHelper: DatabaseHelper
-        private set
-    lateinit var tokenManager: TokenManager
-        private set
-    lateinit var userSession: UserSession
-        private set
-
-    val userDao by lazy { UserDao(databaseHelper) }
-    val messageDao by lazy { MessageDao(databaseHelper) }
-    val conversationDao by lazy { ConversationDao(databaseHelper) }
-    val groupDao by lazy { GroupDao(databaseHelper) }
-    val syncStateDao by lazy { SyncStateDao(databaseHelper) }
-    val friendRequestDao by lazy { FriendRequestDao(databaseHelper) }
-
-    val userRepository by lazy { UserRepository(userDao) }
-    val messageRepository by lazy { MessageRepository(messageDao) }
-    val conversationRepository by lazy { ConversationRepository(conversationDao) }
-    val authRepository by lazy { AuthRepository(userDao, tokenManager, userSession) }
-    val imClient by lazy { ImClient() }
-    val eventProcessor by lazy {
-        EventProcessor(messageDao, conversationDao, groupDao, userDao, friendRequestDao, syncStateDao)
-    }
-    val syncManager by lazy { SyncManager(imClient, eventProcessor) }
+    @Inject lateinit var databaseHelper: DatabaseHelper
+    @Inject lateinit var tokenManager: TokenManager
+    @Inject lateinit var userSession: UserSession
+    @Inject lateinit var userDao: UserDao
+    @Inject lateinit var messageDao: MessageDao
+    @Inject lateinit var conversationDao: ConversationDao
+    @Inject lateinit var groupDao: GroupDao
+    @Inject lateinit var syncStateDao: SyncStateDao
+    @Inject lateinit var friendRequestDao: FriendRequestDao
+    @Inject lateinit var userRepository: UserRepository
+    @Inject lateinit var messageRepository: MessageRepository
+    @Inject lateinit var conversationRepository: ConversationRepository
+    @Inject lateinit var authRepository: AuthRepository
+    @Inject lateinit var imClient: ImClient
+    @Inject lateinit var eventProcessor: EventProcessor
+    @Inject lateinit var syncManager: SyncManager
 
     var currentForwardMessageIds: List<String> = emptyList()
     var currentForwardSnapshotPayloads: List<String> = emptyList()
@@ -82,9 +78,6 @@ class LightChatApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        databaseHelper = DatabaseHelper(this)
-        tokenManager = TokenManager(this)
-        userSession = UserSession(this)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val manager = getSystemService(android.app.NotificationManager::class.java)
             val channel = android.app.NotificationChannel(
