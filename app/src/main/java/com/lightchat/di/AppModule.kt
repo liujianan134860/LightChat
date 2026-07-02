@@ -27,10 +27,16 @@ import javax.inject.Singleton
 import com.lightchat.domain.repository.AuthRepositoryContract
 import com.lightchat.domain.usecase.LoginUseCase
 import com.lightchat.domain.usecase.RegisterUseCase
+import com.lightchat.domain.notification.MessageNotifier
+import com.lightchat.domain.session.AppPresence
+import com.lightchat.notification.AndroidMessageNotifier
+import com.lightchat.runtime.DefaultAppPresence
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+    @Provides @Singleton fun provideAppPresence(impl: DefaultAppPresence): AppPresence = impl
+    @Provides @Singleton fun provideMessageNotifier(impl: AndroidMessageNotifier): MessageNotifier = impl
     @Provides fun provideLoginUseCase(repository: AuthRepositoryContract) = LoginUseCase(repository)
     @Provides fun provideRegisterUseCase(repository: AuthRepositoryContract) = RegisterUseCase(repository)
     @Provides
@@ -95,18 +101,41 @@ object AppModule {
         groupDao: GroupDao,
         userDao: UserDao,
         friendRequestDao: FriendRequestDao,
-        syncStateDao: SyncStateDao
+        syncStateDao: SyncStateDao,
+        databaseHelper: DatabaseHelper,
+        userSession: UserSession,
+        appPresence: AppPresence,
+        messageNotifier: MessageNotifier
     ) = EventProcessor(
         messageDao,
         conversationDao,
         groupDao,
         userDao,
         friendRequestDao,
-        syncStateDao
+        syncStateDao,
+        databaseHelper,
+        userSession,
+        appPresence,
+        messageNotifier
     )
 
     @Provides
     @Singleton
-    fun provideSyncManager(imClient: ImClient, eventProcessor: EventProcessor) =
-        SyncManager(imClient, eventProcessor)
+    fun provideSyncManager(
+        imClient: ImClient,
+        eventProcessor: EventProcessor,
+        messageDao: MessageDao,
+        conversationDao: ConversationDao,
+        groupDao: GroupDao,
+        syncStateDao: SyncStateDao,
+        userSession: UserSession
+    ) = SyncManager(
+        imClient,
+        eventProcessor,
+        messageDao,
+        conversationDao,
+        groupDao,
+        syncStateDao,
+        userSession
+    )
 }

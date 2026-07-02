@@ -10,6 +10,8 @@ import com.lightchat.domain.repository.MessageRepositoryContract
 import com.lightchat.domain.repository.UserRepositoryContract
 import com.lightchat.domain.session.ConnectionController
 import com.lightchat.im.ImClient
+import com.lightchat.sync.SyncManager
+import com.lightchat.domain.session.SyncController
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -24,4 +26,5 @@ abstract class DataBindingsModule {
     @Binds @Singleton abstract fun bindConversationRepository(impl: ConversationRepository): ConversationRepositoryContract
     @Binds @Singleton abstract fun bindMessageRepository(impl: MessageRepository): MessageRepositoryContract
     @Binds @Singleton abstract fun bindConnectionController(impl: ImClient): ConnectionController
+    @Binds @Singleton abstract fun bindSyncController(impl: SyncManager): SyncController
 }
