@@ -2,7 +2,13 @@ package com.lightchat.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lightchat.LightChatApplication
+import com.lightchat.data.local.UserSession
+import com.lightchat.data.local.dao.GroupDao
+import com.lightchat.data.local.dao.UserDao
+import com.lightchat.domain.repository.ConversationRepositoryContract
+import com.lightchat.domain.repository.UserRepositoryContract
+import com.lightchat.im.ImClient
+import com.lightchat.sync.SyncManager
 import com.lightchat.model.Conversation
 import com.lightchat.model.ConversationId
 import com.lightchat.model.ConversationType
@@ -15,6 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 data class GroupCreateUiState(
     val friends: List<User> = emptyList(),
@@ -27,20 +35,23 @@ data class GroupCreateUiState(
     val errorMessage: String = ""
 )
 
-class GroupCreateViewModel : ViewModel() {
-
-    private val userRepository = LightChatApplication.instance.userRepository
-    private val groupDao = LightChatApplication.instance.groupDao
-    private val conversationRepository = LightChatApplication.instance.conversationRepository
-    private val userSession = LightChatApplication.instance.userSession
-    private val app = LightChatApplication.instance
+@HiltViewModel
+class GroupCreateViewModel @Inject constructor(
+    private val userRepository: UserRepositoryContract,
+    private val groupDao: GroupDao,
+    private val conversationRepository: ConversationRepositoryContract,
+    private val userSession: UserSession,
+    private val userDao: UserDao,
+    private val imClient: ImClient,
+    private val syncManager: SyncManager
+) : ViewModel() {
     private var pendingGroup: PendingGroup? = null
 
     private val groupCreateAckListener: (String) -> Unit = { groupId ->
         val pending = pendingGroup
         if (pending != null && pending.groupId == groupId) {
             persistLocalGroup(pending)
-            app.syncManager.requestSync()
+            syncManager.requestSync()
             pendingGroup = null
             _uiState.value = _uiState.value.copy(
                 isCreating = false,
@@ -65,14 +76,14 @@ class GroupCreateViewModel : ViewModel() {
     val uiState: StateFlow<GroupCreateUiState> = _uiState.asStateFlow()
 
     init {
-        app.imClient.onGroupCreateAck(groupCreateAckListener)
-        app.imClient.onError(errorListener)
+        imClient.onGroupCreateAck(groupCreateAckListener)
+        imClient.onError(errorListener)
         loadFriends()
     }
 
     override fun onCleared() {
-        app.imClient.removeGroupCreateAckListener(groupCreateAckListener)
-        app.imClient.removeErrorListener(errorListener)
+        imClient.removeGroupCreateAckListener(groupCreateAckListener)
+        imClient.removeErrorListener(errorListener)
         super.onCleared()
     }
 
@@ -115,7 +126,7 @@ class GroupCreateViewModel : ViewModel() {
                 if (selectedNames.isNotEmpty()) selectedNames else "新建群聊"
             }
             val allMemberIds = state.selectedMemberIds + currentUserId
-            val currentUser = app.userDao.getById(currentUserId)
+            val currentUser = userDao.getById(currentUserId)
             val pending = PendingGroup(
                 groupId = groupId,
                 groupName = groupName,
@@ -129,7 +140,7 @@ class GroupCreateViewModel : ViewModel() {
             pendingGroup = pending
 
             // Send to server first
-            val sentToServer = app.imClient.createGroup(groupId, groupName, allMemberIds.toList())
+            val sentToServer = imClient.createGroup(groupId, groupName, allMemberIds.toList())
 
             if (!sentToServer) {
                 pendingGroup = null

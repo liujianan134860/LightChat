@@ -3,7 +3,12 @@ package com.lightchat.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
-import com.lightchat.LightChatApplication
+import com.lightchat.data.local.DatabaseHelper
+import com.lightchat.data.local.UserSession
+import com.lightchat.data.local.dao.ConversationDao
+import com.lightchat.data.local.dao.MessageDao
+import com.lightchat.data.local.dao.UserDao
+import com.lightchat.domain.repository.ConversationRepositoryContract
 import com.lightchat.event.AppEvents
 import com.lightchat.model.Conversation
 import com.lightchat.model.ConversationType
@@ -15,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 data class ConversationListUiState(
     val conversations: List<Conversation> = emptyList(),
@@ -23,10 +30,15 @@ data class ConversationListUiState(
     val hasMore: Boolean = false
 )
 
-class ConversationListViewModel : ViewModel() {
-
-    private val app = LightChatApplication.instance
-    private val conversationRepository = app.conversationRepository
+@HiltViewModel
+class ConversationListViewModel @Inject constructor(
+    private val conversationRepository: ConversationRepositoryContract,
+    private val conversationDao: ConversationDao,
+    private val messageDao: MessageDao,
+    private val userDao: UserDao,
+    private val userSession: UserSession,
+    private val databaseHelper: DatabaseHelper
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConversationListUiState())
     val uiState: StateFlow<ConversationListUiState> = _uiState.asStateFlow()
@@ -52,7 +64,7 @@ class ConversationListViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoading = true)
             val start = System.currentTimeMillis()
             val (conversations, hasMore, totalCount) = withContext(Dispatchers.IO) {
-                val rawPage = conversationRepository.getConversationsPage(pageSize + 1, 0)
+                    val rawPage = conversationRepository.getConversationsPage(pageSize + 1, 0)
                 val page = resolveDisplayInfo(rawPage.take(pageSize))
                 Triple(page, rawPage.size > pageSize, conversationRepository.getConversationCount())
             }
@@ -112,7 +124,7 @@ class ConversationListViewModel : ViewModel() {
             .map { resolveSingleTargetId(it) }
             .filter { it.isNotBlank() }
             .toSet()
-        val users = app.userDao.getByIds(targetIds)
+        val users = userDao.getByIds(targetIds)
         return conversations.map { conv ->
                 if (conv.type == ConversationType.SINGLE) {
                     val targetId = resolveSingleTargetId(conv)
@@ -123,7 +135,7 @@ class ConversationListViewModel : ViewModel() {
                         ?: targetId
                     if (user != null) {
                         if (conv.title != title || conv.avatar != user.avatar || conv.avatarUrl != user.avatarUrl || conv.targetId != targetId) {
-                            app.conversationDao.updateSingleDisplayInfo(conv.conversationId, targetId, title, user.avatar, user.avatarUrl, user.avatarVersion)
+                            conversationDao.updateSingleDisplayInfo(conv.conversationId, targetId, title, user.avatar, user.avatarUrl, user.avatarVersion)
                         }
                         conv.copy(
                             targetId = targetId,
@@ -134,7 +146,7 @@ class ConversationListViewModel : ViewModel() {
                         )
                     } else {
                         if (conv.targetId != targetId || conv.title != title) {
-                            app.conversationDao.updateSingleDisplayInfo(conv.conversationId, targetId, title, conv.avatar, conv.avatarUrl, conv.avatarVersion)
+                            conversationDao.updateSingleDisplayInfo(conv.conversationId, targetId, title, conv.avatar, conv.avatarUrl, conv.avatarVersion)
                         }
                         conv.copy(targetId = targetId, title = title)
                     }
@@ -145,7 +157,7 @@ class ConversationListViewModel : ViewModel() {
     }
 
     private fun resolveSingleTargetId(conv: Conversation): String {
-        val currentUserId = app.userSession.currentUserId
+        val currentUserId = userSession.currentUserId
         if (conv.targetId.isNotBlank() && conv.targetId != currentUserId) return conv.targetId
         val parts = Regex("^single_(.+)_(.+)$").find(conv.conversationId)?.groupValues
         if (parts != null && parts.size >= 3) {
@@ -175,7 +187,7 @@ class ConversationListViewModel : ViewModel() {
     fun hideConversation(conversationId: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                app.conversationDao.setHidden(conversationId, true)
+                conversationDao.setHidden(conversationId, true)
             }
             loadConversations()
         }
@@ -193,13 +205,13 @@ class ConversationListViewModel : ViewModel() {
     fun markUnread(conversationId: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                app.conversationDao.updateUnreadCount(conversationId, 1)
+                conversationDao.updateUnreadCount(conversationId, 1)
                 val cv = android.content.ContentValues().apply { put("manual_unread", 1) }
-                app.databaseHelper.writableDatabase.update(
+                databaseHelper.writableDatabase.update(
                     "conversation",
                     cv,
                     "owner_user_id = ? AND conversation_id = ?",
-                    arrayOf(app.databaseHelper.currentOwnerId(), conversationId)
+                    arrayOf(databaseHelper.currentOwnerId(), conversationId)
                 )
             }
             loadConversations()
@@ -218,7 +230,7 @@ class ConversationListViewModel : ViewModel() {
     fun clearMessages(conversationId: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                app.messageDao.deleteByConversation(conversationId)
+                messageDao.deleteByConversation(conversationId)
                 conversationRepository.updateLastMessage(conversationId, "", "", 0L)
             }
             loadConversations()

@@ -2,7 +2,8 @@ package com.lightchat.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lightchat.LightChatApplication
+import com.lightchat.data.local.dao.GroupDao
+import com.lightchat.domain.repository.UserRepositoryContract
 import com.lightchat.event.AppEvents
 import com.lightchat.model.ImGroup
 import com.lightchat.model.User
@@ -10,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 data class ContactUiState(
     val friends: List<User> = emptyList(),
@@ -32,10 +35,11 @@ data class ContactUiState(
         }
 }
 
-class ContactViewModel : ViewModel() {
-
-    private val app = LightChatApplication.instance
-    private val userRepository = LightChatApplication.instance.userRepository
+@HiltViewModel
+class ContactViewModel @Inject constructor(
+    private val userRepository: UserRepositoryContract,
+    private val groupDao: GroupDao
+) : ViewModel() {
     private val pageSize = 50
 
     private val _uiState = MutableStateFlow(ContactUiState())
@@ -58,7 +62,7 @@ class ContactViewModel : ViewModel() {
             _uiState.value = ContactUiState(
                 friends = friends,
                 searchFriends = if (_uiState.value.query.isBlank()) emptyList() else userRepository.searchFriends(_uiState.value.query),
-                groups = app.groupDao.getCurrentOwnerGroups(),
+                groups = groupDao.getCurrentOwnerGroups(),
                 query = _uiState.value.query,
                 hasMore = friends.size < total
             )
