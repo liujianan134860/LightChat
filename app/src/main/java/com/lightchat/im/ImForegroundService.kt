@@ -10,11 +10,14 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.lightchat.LightChatApplication
 import com.lightchat.MainActivity
 import com.lightchat.R
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ImForegroundService : Service() {
+    @Inject lateinit var imClient: ImClient
 
     private val handler = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
@@ -22,7 +25,6 @@ class ImForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val app = LightChatApplication.instance
         val notifyIntent = Intent(this, MainActivity::class.java)
         notifyIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         val pendingIntent = PendingIntent.getActivity(
@@ -46,7 +48,7 @@ class ImForegroundService : Service() {
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = Runnable {
             Log.d("LightChatIM", "Foreground service: 1-minute timeout, disconnecting")
-            app.imClient.disconnect()
+            imClient.disconnect()
             stopSelf()
         }
         handler.postDelayed(timeoutRunnable!!, BACKGROUND_TIMEOUT_MS)
