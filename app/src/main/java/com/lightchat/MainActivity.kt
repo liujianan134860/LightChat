@@ -37,7 +37,6 @@ class MainActivity : ComponentActivity() {
             val loggedInAtLaunch = app.authRepository.isLoggedIn()
             val startDestination = if (loggedInAtLaunch) Routes.MAIN else Routes.LOGIN
             val initialConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
-            app.ensureConnectionRecoveryStarted()
             showLightChatMainContent(
                 app = app,
                 startDestination = startDestination,

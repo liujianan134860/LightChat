@@ -23,6 +23,8 @@ import com.lightchat.sync.EventProcessor
 import com.lightchat.sync.SyncManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
+import com.lightchat.runtime.AppStartupCoordinator
+import com.lightchat.runtime.DefaultAppPresence
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +33,8 @@ import kotlinx.coroutines.launch
 
 @HiltAndroidApp
 class LightChatApplication : Application() {
+    @Inject lateinit var startupCoordinator: AppStartupCoordinator
+    @Inject lateinit var appPresence: DefaultAppPresence
 
     @Inject lateinit var databaseHelper: DatabaseHelper
     @Inject lateinit var tokenManager: TokenManager
@@ -54,12 +58,15 @@ class LightChatApplication : Application() {
     var currentForwardTargetConversationId: String? = null
     var currentForwardSourceConversationId: String? = null
     var currentForwardRequiresTypeChoice: Boolean = false
-    var currentOpenConversationId: String? = null
+    var currentOpenConversationId: String?
+        get() = appPresence.currentConversationId
+        set(value) { appPresence.currentConversationId = value }
     val nextClientSeq: Long get() = _nextClientSeq.getAndIncrement()
     private val _nextClientSeq = java.util.concurrent.atomic.AtomicLong(1)
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     var lastMainTab: Int = 0
-    @Volatile var isAppForeground: Boolean = false
+    val isAppForeground: Boolean
+        get() = appPresence.isForeground
     var pendingImageUris: List<android.net.Uri> = emptyList()
     var pendingImageSendConversationId: String? = null
     var pickerEditedPaths: Map<Int, String> = emptyMap()
@@ -78,6 +85,7 @@ class LightChatApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        startupCoordinator.start()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val manager = getSystemService(android.app.NotificationManager::class.java)
             val channel = android.app.NotificationChannel(
@@ -89,45 +97,9 @@ class LightChatApplication : Application() {
         }
     }
 
+    @Deprecated("Connection recovery is started by AppStartupCoordinator")
     fun ensureConnectionRecoveryStarted() {
-        if (connectionRecoveryRegistered) return
-        connectionRecoveryRegistered = true
-        var startedActivities = 0
-        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
-            override fun onActivityStarted(activity: Activity) {
-                if (startedActivities++ == 0) {
-                    isAppForeground = true
-                    imClient.onAppForeground()
-                }
-            }
-
-            override fun onActivityStopped(activity: Activity) {
-                startedActivities = (startedActivities - 1).coerceAtLeast(0)
-                if (startedActivities == 0) {
-                    isAppForeground = false
-                    imClient.onAppBackground()
-                }
-            }
-
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-            override fun onActivityResumed(activity: Activity) = Unit
-            override fun onActivityPaused(activity: Activity) = Unit
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-            override fun onActivityDestroyed(activity: Activity) = Unit
-        })
-        isAppForeground = true
-        imClient.onAppForeground()
-
-        val connectivityManager = getSystemService(ConnectivityManager::class.java)
-        connectivityManager.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                imClient.onNetworkAvailable()
-            }
-
-            override fun onLost(network: Network) {
-                imClient.onNetworkLost()
-            }
-        })
+        startupCoordinator.start()
     }
 
     companion object {
