@@ -3,8 +3,10 @@ package com.lightchat.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lightchat.data.local.TokenManager
-import com.lightchat.data.repository.AuthRepository
-import com.lightchat.im.ImClient
+import com.lightchat.domain.repository.AuthRepositoryContract
+import com.lightchat.domain.session.ConnectionController
+import com.lightchat.domain.usecase.LoginUseCase
+import com.lightchat.domain.usecase.RegisterUseCase
 import com.lightchat.sync.SyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -29,9 +31,11 @@ data class LoginUiState(
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    private val authRepository: AuthRepositoryContract,
+    private val loginUseCase: LoginUseCase,
+    private val registerUseCase: RegisterUseCase,
     private val tokenManager: TokenManager,
-    private val imClient: ImClient,
+    private val connectionController: ConnectionController,
     private val syncManager: SyncManager
 ) : ViewModel() {
 
@@ -63,7 +67,7 @@ class LoginViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             delay(300) // brief visual feedback
             val result = withContext(Dispatchers.IO) {
-                authRepository.login(state.username, state.password)
+                loginUseCase(state.username, state.password)
             }
             result.fold(
                 onSuccess = {
@@ -83,7 +87,7 @@ class LoginViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             delay(300)
             val result = withContext(Dispatchers.IO) {
-                authRepository.register(state.username, state.password, state.registerNickname)
+                registerUseCase(state.username, state.password, state.registerNickname)
             }
             result.fold(
                 onSuccess = {
@@ -100,7 +104,7 @@ class LoginViewModel @Inject constructor(
     private fun connectImClient() {
         val token = tokenManager.getToken()
         if (token != null) {
-            imClient.connect(token)
+            connectionController.connect(token)
             syncManager.start()
         }
     }

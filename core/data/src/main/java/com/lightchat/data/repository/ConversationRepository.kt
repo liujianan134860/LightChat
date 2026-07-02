@@ -4,67 +4,68 @@ import com.lightchat.data.local.dao.ConversationDao
 import com.lightchat.event.AppEvents
 import com.lightchat.im.ImClient
 import com.lightchat.model.Conversation
+import com.lightchat.domain.repository.ConversationRepositoryContract
 
 class ConversationRepository(
     private val conversationDao: ConversationDao,
     private val imClient: ImClient
-) {
+) : ConversationRepositoryContract {
 
-    fun getConversations(): List<Conversation> {
+    override fun getConversations(): List<Conversation> {
         return conversationDao.getAllVisible()
     }
 
-    fun getConversationsPage(limit: Int = 30, offset: Int = 0): List<Conversation> {
+    override fun getConversationsPage(limit: Int, offset: Int): List<Conversation> {
         return conversationDao.getVisiblePage(limit, offset)
     }
 
-    fun getConversationCount(): Int {
+    override fun getConversationCount(): Int {
         return conversationDao.getVisibleCount()
     }
 
-    fun getConversation(conversationId: String): Conversation? {
+    override fun getConversation(conversationId: String): Conversation? {
         return conversationDao.getById(conversationId)
     }
 
-    fun saveConversation(conversation: Conversation) {
+    override fun saveConversation(conversation: Conversation) {
         conversationDao.insert(conversation)
         AppEvents.notifyConversationChanged(conversation.conversationId)
     }
 
-    fun updateLastMessage(conversationId: String, messageId: String, content: String, time: Long, thumbnail: String? = null) {
+    override fun updateLastMessage(conversationId: String, messageId: String, content: String, time: Long, thumbnail: String?) {
         conversationDao.updateLastMessage(conversationId, messageId, content, time, thumbnail)
         AppEvents.notifyMessageChanged(conversationId)
     }
 
-    fun incrementUnread(conversationId: String): Int {
+    override fun incrementUnread(conversationId: String): Int {
         return conversationDao.incrementUnread(conversationId).also {
             AppEvents.notifyConversationChanged(conversationId)
         }
     }
 
-    fun clearUnread(conversationId: String) {
+    override fun clearUnread(conversationId: String) {
         conversationDao.clearUnread(conversationId)
         AppEvents.notifyConversationChanged(conversationId)
     }
 
-    fun setPinned(conversationId: String, pinned: Boolean) {
+    override fun setPinned(conversationId: String, pinned: Boolean) {
         val time = System.currentTimeMillis()
         conversationDao.setPinned(conversationId, pinned, time)
         AppEvents.notifyConversationChanged(conversationId)
         syncToServer(conversationId, pinned, time, null)
     }
 
-    fun setHidden(conversationId: String, hidden: Boolean) {
+    override fun setHidden(conversationId: String, hidden: Boolean) {
         conversationDao.setHidden(conversationId, hidden)
         AppEvents.notifyConversationChanged(conversationId)
     }
 
-    fun deleteConversation(conversationId: String) {
+    override fun deleteConversation(conversationId: String) {
         conversationDao.setDeleted(conversationId, true)
         AppEvents.notifyConversationChanged(conversationId)
     }
 
-    fun setMute(conversationId: String, mute: Boolean) {
+    override fun setMute(conversationId: String, mute: Boolean) {
         conversationDao.setMute(conversationId, mute)
         AppEvents.notifyConversationChanged(conversationId)
         syncToServer(conversationId, null, null, mute)

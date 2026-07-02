@@ -18,6 +18,7 @@ import com.lightchat.model.Message
 import com.lightchat.model.MessageStatus
 import com.lightchat.model.MessageType
 import com.lightchat.model.User
+import com.lightchat.domain.repository.AuthRepositoryContract
 import org.json.JSONObject
 
 class AuthRepository(
@@ -29,8 +30,8 @@ class AuthRepository(
     private val tokenManager: TokenManager,
     private val userSession: UserSession,
     private val authApiClient: AuthApiClient = AuthApiClient()
-) {
-    fun login(username: String, password: String): Result<User> {
+) : AuthRepositoryContract {
+    override fun login(username: String, password: String): Result<User> {
         if (username.isBlank() || password.isBlank()) {
             return Result.failure(Exception("账户和密码不能为空"))
         }
@@ -42,7 +43,7 @@ class AuthRepository(
         }
     }
 
-    fun register(username: String, password: String, nickname: String): Result<User> {
+    override fun register(username: String, password: String, nickname: String): Result<User> {
         if (username.isBlank() || password.isBlank() || nickname.isBlank()) {
             return Result.failure(Exception("所有字段不能为空"))
         }
@@ -54,16 +55,16 @@ class AuthRepository(
         }
     }
 
-    fun logout() {
+    override fun logout() {
         tokenManager.clearToken()
         userSession.clear()
     }
 
-    fun isLoggedIn(): Boolean {
+    override fun isLoggedIn(): Boolean {
         return tokenManager.isLoggedIn() && userSession.isLoggedIn()
     }
 
-    fun getCurrentUserId(): String? = userSession.currentUserId
+    override fun getCurrentUserId(): String? = userSession.currentUserId
 
     private fun saveAuthenticatedUser(token: String, user: User) {
         userSession.currentUserId = user.userId

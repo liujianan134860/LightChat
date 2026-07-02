@@ -3,6 +3,7 @@ package com.lightchat.im
 import com.lightchat.protocol.Cmd
 import com.lightchat.protocol.Packet
 import com.lightchat.protocol.ProtocolCodec
+import com.lightchat.domain.session.ConnectionController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +13,9 @@ data class ImClientState(
     val logs: List<String> = emptyList()
 )
 
-class ImClient(private val connectionManager: ConnectionManager = ConnectionManager()) {
+class ImClient(
+    private val connectionManager: ConnectionManager = ConnectionManager()
+) : ConnectionController {
 
     private val codec = ProtocolCodec()
     private val _state = MutableStateFlow(ImClientState())
@@ -68,7 +71,7 @@ class ImClient(private val connectionManager: ConnectionManager = ConnectionMana
         }
     }
 
-    fun connect(token: String) {
+    override fun connect(token: String) {
         val currentState = connectionManager.getState()
         if (currentState != ConnectionState.DISCONNECTED) {
             addLog("ImClient: 已处于 $currentState，跳过重复连接")
@@ -78,24 +81,24 @@ class ImClient(private val connectionManager: ConnectionManager = ConnectionMana
         connectionManager.connect(token)
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         addLog("ImClient: 断开连接")
         connectionManager.disconnect()
     }
 
-    fun onNetworkAvailable() {
+    override fun onNetworkAvailable() {
         connectionManager.onNetworkAvailable()
     }
 
-    fun onNetworkLost() {
+    override fun onNetworkLost() {
         connectionManager.onNetworkLost()
     }
 
-    fun onAppForeground() {
+    override fun onAppForeground() {
         connectionManager.onAppForeground()
     }
 
-    fun onAppBackground() {
+    override fun onAppBackground() {
         connectionManager.onAppBackground()
     }
 

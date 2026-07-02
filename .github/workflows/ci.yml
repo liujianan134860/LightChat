@@ -23,6 +23,8 @@ jobs:
             task: ":core:database:testDebugUnitTest"
           - module: core-data
             task: ":core:data:testDebugUnitTest"
+          - module: core-domain
+            task: ":core:domain:test"
           - module: shared-protocol
             task: ":shared:protocol:test"
           - module: app

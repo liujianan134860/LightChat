@@ -24,10 +24,15 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.lightchat.domain.repository.AuthRepositoryContract
+import com.lightchat.domain.usecase.LoginUseCase
+import com.lightchat.domain.usecase.RegisterUseCase
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+    @Provides fun provideLoginUseCase(repository: AuthRepositoryContract) = LoginUseCase(repository)
+    @Provides fun provideRegisterUseCase(repository: AuthRepositoryContract) = RegisterUseCase(repository)
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context) = DatabaseHelper(context)

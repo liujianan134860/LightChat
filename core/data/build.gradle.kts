@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
@@ -18,11 +20,18 @@ android {
 
 dependencies {
     api(project(":core:model"))
+    implementation(project(":core:domain"))
     implementation(project(":core:database"))
     implementation(project(":core:network"))
     implementation(project(":shared:protocol"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
     implementation(libs.json)
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
     testImplementation(libs.junit4)
+}
+
+kapt {
+    correctErrorTypes = true
 }

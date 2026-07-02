@@ -74,6 +74,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:database"))
     implementation(project(":core:data"))
+    implementation(project(":core:domain"))
     implementation(project(":shared:protocol"))
 
     // Core
