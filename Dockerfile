@@ -3,8 +3,10 @@ FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /workspace
 COPY . .
 RUN chmod +x gradlew \
-    && ./gradlew :server:clean :server:jar --no-daemon \
-    && jar tf server/build/libs/server-1.0.0.jar | grep -q 'com/lightchat/server/MainKt.class'
+    && ./gradlew :server:clean :server:installDist --no-daemon \
+    && test -f server/build/install/server/bin/server \
+    && test -f server/build/install/server/lib/server-1.0.0.jar \
+    && jar tf server/build/install/server/lib/server-1.0.0.jar | grep -q 'com/lightchat/server/MainKt.class'
 
 FROM eclipse-temurin:17-jre-jammy
 
@@ -13,7 +15,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=builder /workspace/server/build/libs/server-1.0.0.jar /app/lightchat-server.jar
+COPY --from=builder /workspace/server/build/install/server /app/server
 
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
 EXPOSE 8080 8081
@@ -21,4 +23,4 @@ EXPOSE 8080 8081
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl --fail --silent http://127.0.0.1:8081/health || exit 1
 
-ENTRYPOINT ["java", "-jar", "/app/lightchat-server.jar"]
+ENTRYPOINT ["/app/server/bin/server"]
