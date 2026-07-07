@@ -2,7 +2,7 @@ FROM eclipse-temurin:17-jdk-jammy AS builder
 
 WORKDIR /workspace
 COPY . .
-RUN chmod +x gradlew && ./gradlew :server:jar --no-daemon
+RUN chmod +x gradlew && ./gradlew :server:clean :server:jar --no-daemon
 
 FROM eclipse-temurin:17-jre-jammy
 
@@ -12,6 +12,7 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=builder /workspace/server/build/libs/server-1.0.0.jar /app/lightchat-server.jar
+RUN jar tf /app/lightchat-server.jar | grep -q 'com/lightchat/server/MainKt.class'
 
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Dfile.encoding=UTF-8"
 EXPOSE 8080 8081
