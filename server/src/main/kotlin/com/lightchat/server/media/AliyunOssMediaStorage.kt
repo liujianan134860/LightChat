@@ -85,7 +85,7 @@ class AliyunOssMediaStorage(
     fun generateSignedUrl(objectKey: String): String {
         val expireAt = Date(System.currentTimeMillis() + signedUrlSeconds * 1000)
         val url: URL = signingClient.generatePresignedUrl(bucket, objectKey, expireAt)
-        return url.toString()
+        return toPublicOssUrl(url.toString())
     }
 
     private fun extractObjectKey(url: String): String? {
@@ -146,6 +146,10 @@ class AliyunOssMediaStorage(
 
         private fun derivePublicEndpoint(endpoint: String): String {
             return endpoint.replace("-internal.aliyuncs.com", ".aliyuncs.com")
+        }
+
+        private fun toPublicOssUrl(url: String): String {
+            return url.replace("-internal.aliyuncs.com", ".aliyuncs.com")
         }
     }
 }
