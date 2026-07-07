@@ -13,6 +13,7 @@ import org.json.JSONObject
 import java.net.InetSocketAddress
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 
 import java.util.concurrent.Executors
 
@@ -29,6 +30,7 @@ class AuthHttpServer(
 
     fun start() {
         server.executor = Executors.newCachedThreadPool()
+        server.createContext("/health") { exchange -> handleHealth(exchange) }
         server.createContext("/api/register") { exchange -> handleRegister(exchange) }
         server.createContext("/api/login") { exchange -> handleLogin(exchange) }
         server.createContext("/api/users/search") { exchange -> handleUserSearch(exchange) }
@@ -39,6 +41,19 @@ class AuthHttpServer(
         server.createContext("/api/mock-push/pending") { exchange -> handleMockPushPending(exchange) }
         server.start()
         println("[START] LightChat HTTP API listening on port $port")
+    }
+
+    private fun handleHealth(exchange: HttpExchange) {
+        if (!exchange.requestMethod.equals("GET", ignoreCase = true)) {
+            writeError(exchange, 405, "Method Not Allowed")
+            return
+        }
+        writeJson(exchange, 200, JSONObject().apply {
+            put("status", "ok")
+            put("service", "lightchat-server")
+            put("version", "1.0.0")
+            put("timestamp", Instant.now().toString())
+        })
     }
 
     fun stop(delaySeconds: Int = 0) {

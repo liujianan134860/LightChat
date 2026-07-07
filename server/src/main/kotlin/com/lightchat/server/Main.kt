@@ -1,6 +1,7 @@
 package com.lightchat.server
 
 import com.lightchat.server.handler.MessageDeliveryService
+import com.lightchat.server.config.RuntimeConfig
 import com.lightchat.server.handler.PacketDispatcher
 import com.lightchat.server.http.AuthHttpServer
 import com.lightchat.server.netty.NettyLightChatWebSocketServer
@@ -18,9 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 fun main() {
-    val port = System.getenv("SERVER_PORT")?.toIntOrNull() ?: 8080
-    val httpPort = System.getenv("SERVER_HTTP_PORT")?.toIntOrNull() ?: 8081
-    val persistence = createPersistence()
+    val config = RuntimeConfig.from()
+    val persistence = createPersistence(config)
     println("=== LightChat Server v1.0 ===")
     println("Initializing components...")
 
@@ -75,12 +75,13 @@ fun main() {
     val deliveryService = MessageDeliveryService(dataStore, eventService, connectionRegistry, codec, pushGateway)
     val dispatcher = PacketDispatcher(connectionRegistry, dataStore, eventService, codec, deliveryService, jwtService, pushGateway)
 
-    val server = NettyLightChatWebSocketServer(port, dispatcher, connectionRegistry, codec)
-    val httpServer = AuthHttpServer(httpPort, dataStore, jwtService, pushGateway, eventService)
+    val server = NettyLightChatWebSocketServer(config.serverPort, dispatcher, connectionRegistry, codec)
+    val httpServer = AuthHttpServer(config.httpPort, dataStore, jwtService, pushGateway, eventService)
     httpServer.start()
     server.start()
-    println("Server started on port $port")
-    println("HTTP API started on port $httpPort")
+    println("Environment: ${config.environment}")
+    println("Server started on port ${config.serverPort}")
+    println("HTTP API started on port ${config.httpPort}")
     println("Waiting for connections... (Ctrl+C to stop)")
 
     Runtime.getRuntime().addShutdownHook(Thread {
@@ -98,10 +99,6 @@ fun main() {
     })
 }
 
-private fun createPersistence(): StatePersistence {
-    val jdbcUrl = System.getenv("MYSQL_URL")
-        ?: "jdbc:mysql://127.0.0.1:3307/lightchat?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true"
-    val user = System.getenv("MYSQL_USER") ?: "root"
-    val password = System.getenv("MYSQL_PASSWORD") ?: ""
-    return MySqlStatePersistence(jdbcUrl, user, password)
+private fun createPersistence(config: RuntimeConfig): StatePersistence {
+    return MySqlStatePersistence(config.mysqlUrl, config.mysqlUser, config.mysqlPassword)
 }

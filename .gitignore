@@ -60,3 +60,7 @@ oss-test-send.jpg
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Deployment secrets
+deploy/.env
+deploy/nginx/certs/

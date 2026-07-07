@@ -1,6 +1,7 @@
 package com.lightchat.data.remote
 
 import com.lightchat.core.network.NetworkClients
+import com.lightchat.core.data.BuildConfig
 import com.lightchat.model.User
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -199,6 +200,6 @@ class AuthApiClient(
 
     companion object {
         private val JSON = "application/json; charset=utf-8".toMediaType()
-        const val DEFAULT_BASE_URL = "http://10.129.97.70:8081"
+        val DEFAULT_BASE_URL: String = BuildConfig.LIGHTCHAT_API_URL
     }
 }

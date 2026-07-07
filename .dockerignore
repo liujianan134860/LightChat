@@ -1,0 +1,16 @@
+.git
+.github
+.gradle
+.idea
+**/build
+deploy/.env
+deploy/nginx/certs
+local.properties
+mysql-data
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.png
+*.jpg
+*.mp4

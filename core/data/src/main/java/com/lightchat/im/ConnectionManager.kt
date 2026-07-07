@@ -1,6 +1,7 @@
 package com.lightchat.im
 
 import com.lightchat.core.network.NetworkClients
+import com.lightchat.core.data.BuildConfig
 import com.lightchat.protocol.Packet
 import com.lightchat.protocol.ProtocolCodec
 import android.util.Log
@@ -318,6 +319,6 @@ class ConnectionManager(
     }
 
     companion object {
-        const val DEFAULT_URL = "ws://10.129.97.70:8080/ws"
+        val DEFAULT_URL: String = BuildConfig.LIGHTCHAT_WS_URL
     }
 }

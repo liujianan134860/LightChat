@@ -5,6 +5,17 @@ plugins {
     alias(libs.plugins.hilt.android)
 }
 
+val releaseStoreFile = providers.environmentVariable("LIGHTCHAT_KEYSTORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("LIGHTCHAT_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("LIGHTCHAT_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("LIGHTCHAT_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.lightchat"
     compileSdk = 34
@@ -15,9 +26,21 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
 
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("production") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
@@ -33,11 +56,16 @@ android {
             initWith(getByName("release"))
             isDebuggable = false
             isProfileable = true
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
         release {
             isMinifyEnabled = true
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("production")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -65,6 +93,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name in setOf("assembleRelease", "bundleRelease") && !hasReleaseSigning) {
+        doFirst {
+            error(
+                "Release signing is not configured. Set LIGHTCHAT_KEYSTORE_FILE, " +
+                    "LIGHTCHAT_KEYSTORE_PASSWORD, LIGHTCHAT_KEY_ALIAS, and LIGHTCHAT_KEY_PASSWORD."
+            )
         }
     }
 }
