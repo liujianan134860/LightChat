@@ -360,7 +360,9 @@ class AuthHttpServer(
     }
 
     private fun toPublicOssUrl(url: String): String {
-        return url.replace("-internal.aliyuncs.com", ".aliyuncs.com")
+        return url
+            .replace("http://", "https://")
+            .replace("-internal.aliyuncs.com", ".aliyuncs.com")
     }
 
     private fun writeJson(exchange: HttpExchange, status: Int, body: JSONObject) {

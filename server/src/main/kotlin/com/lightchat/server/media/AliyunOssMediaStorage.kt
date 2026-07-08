@@ -70,11 +70,9 @@ class AliyunOssMediaStorage(
                 .removePrefix("https://")
                 .removePrefix("http://")
                 .trimEnd('/')
-            return "https://$bucket.$cleanEndpoint/$key"
+            return toPublicOssUrl("https://$bucket.$cleanEndpoint/$key")
         }
-        val expireAt = Date(System.currentTimeMillis() + signedUrlSeconds * 1000)
-        val url: URL = client.generatePresignedUrl(bucket, key, expireAt)
-        return url.toString()
+        return generateSignedUrl(key)
     }
 
     override fun refreshSignedUrl(expiredUrl: String): String? {
@@ -149,7 +147,9 @@ class AliyunOssMediaStorage(
         }
 
         private fun toPublicOssUrl(url: String): String {
-            return url.replace("-internal.aliyuncs.com", ".aliyuncs.com")
+            return url
+                .replace("http://", "https://")
+                .replace("-internal.aliyuncs.com", ".aliyuncs.com")
         }
     }
 }
