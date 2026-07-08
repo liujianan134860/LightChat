@@ -153,7 +153,8 @@ fun MergeForwardDetailScreen(
                 }
             },
             label = "merge_forward_detail"
-        ) {
+        ) { stackSize ->
+            val animatedExtra = extraStack.getOrNull(stackSize - 1).orEmpty()
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -168,7 +169,7 @@ fun MergeForwardDetailScreen(
                         colors = CardDefaults.cardColors(containerColor = WeChatWhite)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(mergeForwardTitle(currentExtra), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(mergeForwardTitle(animatedExtra), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             val dateRange = formatDateRange(lines)
                             if (dateRange.isNotBlank()) {

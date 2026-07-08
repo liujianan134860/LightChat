@@ -2,8 +2,8 @@ package com.lightchat.server.handler
 
 import com.lightchat.server.model.InboxEvent
 import com.lightchat.server.model.ServerMessage
-import com.lightchat.server.protocol.Cmd
-import com.lightchat.server.protocol.Packet
+import com.lightchat.protocol.Cmd
+import com.lightchat.protocol.Packet
 import com.lightchat.server.protocol.ProtocolCodec
 import com.lightchat.server.security.JwtService
 import com.lightchat.server.push.MockVendorPushGateway

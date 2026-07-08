@@ -21,49 +21,52 @@ import com.lightchat.data.repository.UserRepository
 import com.lightchat.im.ImClient
 import com.lightchat.sync.EventProcessor
 import com.lightchat.sync.SyncManager
+import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
+import com.lightchat.runtime.AppStartupCoordinator
+import com.lightchat.runtime.DefaultAppPresence
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
+@HiltAndroidApp
 class LightChatApplication : Application() {
+    @Inject lateinit var startupCoordinator: AppStartupCoordinator
+    @Inject lateinit var appPresence: DefaultAppPresence
 
-    lateinit var databaseHelper: DatabaseHelper
-        private set
-    lateinit var tokenManager: TokenManager
-        private set
-    lateinit var userSession: UserSession
-        private set
-
-    val userDao by lazy { UserDao(databaseHelper) }
-    val messageDao by lazy { MessageDao(databaseHelper) }
-    val conversationDao by lazy { ConversationDao(databaseHelper) }
-    val groupDao by lazy { GroupDao(databaseHelper) }
-    val syncStateDao by lazy { SyncStateDao(databaseHelper) }
-    val friendRequestDao by lazy { FriendRequestDao(databaseHelper) }
-
-    val userRepository by lazy { UserRepository(userDao) }
-    val messageRepository by lazy { MessageRepository(messageDao) }
-    val conversationRepository by lazy { ConversationRepository(conversationDao) }
-    val authRepository by lazy { AuthRepository(userDao, tokenManager, userSession) }
-    val imClient by lazy { ImClient() }
-    val eventProcessor by lazy {
-        EventProcessor(messageDao, conversationDao, groupDao, userDao, friendRequestDao, syncStateDao)
-    }
-    val syncManager by lazy { SyncManager(imClient, eventProcessor) }
+    @Inject lateinit var databaseHelper: DatabaseHelper
+    @Inject lateinit var tokenManager: TokenManager
+    @Inject lateinit var userSession: UserSession
+    @Inject lateinit var userDao: UserDao
+    @Inject lateinit var messageDao: MessageDao
+    @Inject lateinit var conversationDao: ConversationDao
+    @Inject lateinit var groupDao: GroupDao
+    @Inject lateinit var syncStateDao: SyncStateDao
+    @Inject lateinit var friendRequestDao: FriendRequestDao
+    @Inject lateinit var userRepository: UserRepository
+    @Inject lateinit var messageRepository: MessageRepository
+    @Inject lateinit var conversationRepository: ConversationRepository
+    @Inject lateinit var authRepository: AuthRepository
+    @Inject lateinit var imClient: ImClient
+    @Inject lateinit var eventProcessor: EventProcessor
+    @Inject lateinit var syncManager: SyncManager
 
     var currentForwardMessageIds: List<String> = emptyList()
     var currentForwardSnapshotPayloads: List<String> = emptyList()
     var currentForwardTargetConversationId: String? = null
     var currentForwardSourceConversationId: String? = null
     var currentForwardRequiresTypeChoice: Boolean = false
-    var currentOpenConversationId: String? = null
+    var currentOpenConversationId: String?
+        get() = appPresence.currentConversationId
+        set(value) { appPresence.currentConversationId = value }
     val nextClientSeq: Long get() = _nextClientSeq.getAndIncrement()
     private val _nextClientSeq = java.util.concurrent.atomic.AtomicLong(1)
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     var lastMainTab: Int = 0
-    @Volatile var isAppForeground: Boolean = false
+    val isAppForeground: Boolean
+        get() = appPresence.isForeground
     var pendingImageUris: List<android.net.Uri> = emptyList()
     var pendingImageSendConversationId: String? = null
     var pickerEditedPaths: Map<Int, String> = emptyMap()
@@ -82,9 +85,7 @@ class LightChatApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        databaseHelper = DatabaseHelper(this)
-        tokenManager = TokenManager(this)
-        userSession = UserSession(this)
+        startupCoordinator.start()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val manager = getSystemService(android.app.NotificationManager::class.java)
             val channel = android.app.NotificationChannel(
@@ -96,45 +97,9 @@ class LightChatApplication : Application() {
         }
     }
 
+    @Deprecated("Connection recovery is started by AppStartupCoordinator")
     fun ensureConnectionRecoveryStarted() {
-        if (connectionRecoveryRegistered) return
-        connectionRecoveryRegistered = true
-        var startedActivities = 0
-        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
-            override fun onActivityStarted(activity: Activity) {
-                if (startedActivities++ == 0) {
-                    isAppForeground = true
-                    imClient.onAppForeground()
-                }
-            }
-
-            override fun onActivityStopped(activity: Activity) {
-                startedActivities = (startedActivities - 1).coerceAtLeast(0)
-                if (startedActivities == 0) {
-                    isAppForeground = false
-                    imClient.onAppBackground()
-                }
-            }
-
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-            override fun onActivityResumed(activity: Activity) = Unit
-            override fun onActivityPaused(activity: Activity) = Unit
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-            override fun onActivityDestroyed(activity: Activity) = Unit
-        })
-        isAppForeground = true
-        imClient.onAppForeground()
-
-        val connectivityManager = getSystemService(ConnectivityManager::class.java)
-        connectivityManager.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                imClient.onNetworkAvailable()
-            }
-
-            override fun onLost(network: Network) {
-                imClient.onNetworkLost()
-            }
-        })
+        startupCoordinator.start()
     }
 
     companion object {

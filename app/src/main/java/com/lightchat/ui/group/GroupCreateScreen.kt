@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.lightchat.model.User
 import com.lightchat.ui.components.LightChatAvatar
 import com.lightchat.ui.theme.*
@@ -29,7 +29,7 @@ import com.lightchat.viewmodel.GroupCreateViewModel
 fun GroupCreateScreen(
     onBack: () -> Unit,
     onGroupCreated: (groupId: String, groupName: String) -> Unit,
-    viewModel: GroupCreateViewModel = viewModel()
+    viewModel: GroupCreateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showNameDialog by remember { mutableStateOf(false) }

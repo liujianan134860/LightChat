@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
 import com.lightchat.LightChatApplication
 import com.lightchat.R
@@ -54,7 +54,7 @@ fun ConversationListScreen(
     onSearchClick: () -> Unit,
     onCreateGroup: () -> Unit,
     onAddFriend: () -> Unit,
-    viewModel: ConversationListViewModel = viewModel()
+    viewModel: ConversationListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()

@@ -18,7 +18,9 @@ import com.lightchat.event.AppEvents
 import com.lightchat.ui.navigation.Routes
 import com.lightchat.ui.theme.TopBarBackground
 import com.lightchat.ui.theme.WeChatGreen
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -35,7 +37,6 @@ class MainActivity : ComponentActivity() {
             val loggedInAtLaunch = app.authRepository.isLoggedIn()
             val startDestination = if (loggedInAtLaunch) Routes.MAIN else Routes.LOGIN
             val initialConversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
-            app.ensureConnectionRecoveryStarted()
             showLightChatMainContent(
                 app = app,
                 startDestination = startDestination,

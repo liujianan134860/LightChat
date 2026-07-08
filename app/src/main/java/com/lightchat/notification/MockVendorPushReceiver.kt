@@ -3,10 +3,15 @@ package com.lightchat.notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.lightchat.LightChatApplication
 import com.lightchat.data.local.UserSession
+import com.lightchat.domain.session.AppPresence
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MockVendorPushReceiver : BroadcastReceiver() {
+    @Inject lateinit var userSession: UserSession
+    @Inject lateinit var appPresence: AppPresence
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_MOCK_VENDOR_PUSH) return
         val targetUserId = intent.getStringExtra(EXTRA_USER_ID).orEmpty()
@@ -23,10 +28,7 @@ class MockVendorPushReceiver : BroadcastReceiver() {
         }
         val conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
         if (conversationId.isBlank()) return
-        if (LightChatApplication.isInitialized()) {
-            val app = LightChatApplication.instance
-            if (app.isAppForeground && app.currentOpenConversationId == conversationId) return
-        }
+        if (appPresence.isForeground && appPresence.currentConversationId == conversationId) return
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "LightChat" }
         val content = intent.getStringExtra(EXTRA_CONTENT).orEmpty().ifBlank { "你收到了一条新消息" }
         NotificationHelper.showMessage(
@@ -38,10 +40,7 @@ class MockVendorPushReceiver : BroadcastReceiver() {
     }
 
     private fun currentUserId(context: Context): String? {
-        if (LightChatApplication.isInitialized()) {
-            return LightChatApplication.instance.userSession.currentUserId
-        }
-        return UserSession(context.applicationContext).currentUserId
+        return userSession.currentUserId
     }
 
     companion object {

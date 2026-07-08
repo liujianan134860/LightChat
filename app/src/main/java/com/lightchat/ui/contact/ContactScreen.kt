@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.lightchat.LightChatApplication
 import com.lightchat.event.AppEvents
 import com.lightchat.model.ConversationId
@@ -53,8 +53,8 @@ fun ContactScreen(
     onGroupClick: (conversationId: String, title: String) -> Unit = { _, _ -> },
     onProfileClick: (String) -> Unit = {},
     onFriendRequestsClick: () -> Unit = {},
-    viewModel: ContactViewModel = viewModel(),
-    groupCreateViewModel: GroupCreateViewModel = viewModel()
+    viewModel: ContactViewModel = hiltViewModel(),
+    groupCreateViewModel: GroupCreateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val groupCreateState by groupCreateViewModel.uiState.collectAsState()

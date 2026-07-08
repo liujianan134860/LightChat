@@ -13,6 +13,7 @@ import org.json.JSONObject
 import java.net.InetSocketAddress
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 
 import java.util.concurrent.Executors
 
@@ -29,6 +30,7 @@ class AuthHttpServer(
 
     fun start() {
         server.executor = Executors.newCachedThreadPool()
+        server.createContext("/health") { exchange -> handleHealth(exchange) }
         server.createContext("/api/register") { exchange -> handleRegister(exchange) }
         server.createContext("/api/login") { exchange -> handleLogin(exchange) }
         server.createContext("/api/users/search") { exchange -> handleUserSearch(exchange) }
@@ -39,6 +41,19 @@ class AuthHttpServer(
         server.createContext("/api/mock-push/pending") { exchange -> handleMockPushPending(exchange) }
         server.start()
         println("[START] LightChat HTTP API listening on port $port")
+    }
+
+    private fun handleHealth(exchange: HttpExchange) {
+        if (!exchange.requestMethod.equals("GET", ignoreCase = true)) {
+            writeError(exchange, 405, "Method Not Allowed")
+            return
+        }
+        writeJson(exchange, 200, JSONObject().apply {
+            put("status", "ok")
+            put("service", "lightchat-server")
+            put("version", "1.0.0")
+            put("timestamp", Instant.now().toString())
+        })
     }
 
     fun stop(delaySeconds: Int = 0) {
@@ -162,8 +177,8 @@ class AuthHttpServer(
             val stored = mediaStorage.storeImage(imageBytes, thumbnailBytes)
             writeJson(exchange, 200, JSONObject().apply {
                 put("fileId", stored.fileId)
-                put("imageUrl", stored.imageUrl)
-                put("thumbnailUrl", stored.thumbnailUrl)
+                put("imageUrl", toPublicOssUrl(stored.imageUrl))
+                put("thumbnailUrl", toPublicOssUrl(stored.thumbnailUrl))
                 put("objectKey", stored.objectKey)
                 put("thumbnailObjectKey", stored.thumbnailObjectKey)
                 put("storageProvider", stored.storageProvider)
@@ -253,7 +268,7 @@ class AuthHttpServer(
             }
 
             writeJson(exchange, 200, JSONObject().apply {
-                put("url", newUrl)
+                put("url", toPublicOssUrl(newUrl))
             })
         } catch (e: Exception) {
             writeError(exchange, 500, "刷新图片URL失败: ${e.message}")
@@ -342,6 +357,12 @@ class AuthHttpServer(
 
     private fun writeError(exchange: HttpExchange, status: Int, message: String) {
         writeJson(exchange, status, JSONObject().put("message", message))
+    }
+
+    private fun toPublicOssUrl(url: String): String {
+        return url
+            .replace("http://", "https://")
+            .replace("-internal.aliyuncs.com", ".aliyuncs.com")
     }
 
     private fun writeJson(exchange: HttpExchange, status: Int, body: JSONObject) {

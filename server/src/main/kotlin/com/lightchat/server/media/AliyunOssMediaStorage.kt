@@ -14,6 +14,7 @@ import java.util.UUID
 
 class AliyunOssMediaStorage(
     private val client: OSS,
+    private val signingClient: OSS,
     private val bucket: String,
     private val endpoint: String,
     private val keyPrefix: String,
@@ -44,11 +45,19 @@ class AliyunOssMediaStorage(
         val metadata = ObjectMetadata().apply {
             contentLength = bytes.size.toLong()
             contentType = "image/jpeg"
-            cacheControl = "public, max-age=31536000"
+            cacheControl = if (publicRead) {
+                "public, max-age=31536000"
+            } else {
+                "private, max-age=3600"
+            }
         }
         ByteArrayInputStream(bytes).use { input ->
             client.putObject(PutObjectRequest(bucket, key, input, metadata))
-            client.setObjectAcl(bucket, key, CannedAccessControlList.PublicRead)
+            client.setObjectAcl(
+                bucket,
+                key,
+                if (publicRead) CannedAccessControlList.PublicRead else CannedAccessControlList.Private
+            )
         }
     }
 
@@ -61,11 +70,9 @@ class AliyunOssMediaStorage(
                 .removePrefix("https://")
                 .removePrefix("http://")
                 .trimEnd('/')
-            return "https://$bucket.$cleanEndpoint/$key"
+            return toPublicOssUrl("https://$bucket.$cleanEndpoint/$key")
         }
-        val expireAt = Date(System.currentTimeMillis() + signedUrlSeconds * 1000)
-        val url: URL = client.generatePresignedUrl(bucket, key, expireAt)
-        return url.toString()
+        return generateSignedUrl(key)
     }
 
     override fun refreshSignedUrl(expiredUrl: String): String? {
@@ -75,8 +82,8 @@ class AliyunOssMediaStorage(
 
     fun generateSignedUrl(objectKey: String): String {
         val expireAt = Date(System.currentTimeMillis() + signedUrlSeconds * 1000)
-        val url: URL = client.generatePresignedUrl(bucket, objectKey, expireAt)
-        return url.toString()
+        val url: URL = signingClient.generatePresignedUrl(bucket, objectKey, expireAt)
+        return toPublicOssUrl(url.toString())
     }
 
     private fun extractObjectKey(url: String): String? {
@@ -99,14 +106,20 @@ class AliyunOssMediaStorage(
             val accessKeySecret = requireEnv("ALIYUN_OSS_ACCESS_KEY_SECRET")
             val bucket = requireEnv("ALIYUN_OSS_BUCKET")
             val endpoint = normalizeEndpoint(requireEnv("ALIYUN_OSS_ENDPOINT"))
+            val publicEndpoint = normalizeEndpoint(
+                System.getenv("ALIYUN_OSS_PUBLIC_ENDPOINT")?.takeIf { it.isNotBlank() }
+                    ?: derivePublicEndpoint(endpoint)
+            )
             val keyPrefix = System.getenv("ALIYUN_OSS_KEY_PREFIX") ?: "lightchat"
-            val publicRead = (System.getenv("ALIYUN_OSS_PUBLIC_READ") ?: "true").equals("true", ignoreCase = true)
+            val publicRead = (System.getenv("ALIYUN_OSS_PUBLIC_READ") ?: "false").equals("true", ignoreCase = true)
             val signedUrlSeconds = (System.getenv("ALIYUN_OSS_SIGNED_URL_SECONDS") ?: "3600").toLong()
             val publicBaseUrl = System.getenv("ALIYUN_OSS_PUBLIC_BASE_URL")
 
             val client = OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret)
+            val signingClient = OSSClientBuilder().build(publicEndpoint, accessKeyId, accessKeySecret)
             return AliyunOssMediaStorage(
                 client = client,
+                signingClient = signingClient,
                 bucket = bucket,
                 endpoint = endpoint,
                 keyPrefix = keyPrefix,
@@ -127,6 +140,16 @@ class AliyunOssMediaStorage(
             } else {
                 "https://${value.trimEnd('/')}"
             }
+        }
+
+        private fun derivePublicEndpoint(endpoint: String): String {
+            return endpoint.replace("-internal.aliyuncs.com", ".aliyuncs.com")
+        }
+
+        private fun toPublicOssUrl(url: String): String {
+            return url
+                .replace("http://", "https://")
+                .replace("-internal.aliyuncs.com", ".aliyuncs.com")
         }
     }
 }
